@@ -18,9 +18,16 @@ class VentasTable
                 TextColumn::make('id')
                     ->label('# Venta')
                     ->sortable(),
-                TextColumn::make('metodoPago.nombre')  // ✅ relación con punto
+                TextColumn::make('metodoPago.nombre')
                     ->label('Método de Pago')
-                    ->sortable(),
+                    ->sortable()
+                    ->badge() // ✅ lo convierte en badge
+                    ->color(fn ($record) => match($record->metodoPago?->nombre) {
+                        'Efectivo'      => 'success',  // 🟢 verde
+                        'Transferencia' => 'info',     // 🔵 azul
+                        'Tarjeta'       => 'warning',  // 🟠 naranja
+                        default         => 'gray',
+                    }),
                 TextColumn::make('total')
                     ->label('Total')
                     ->money('COP')
