@@ -36,7 +36,12 @@ class VentaResource extends Resource
             //
         ];
     }
-
+    public static function afterCreate(Model $record): void
+    {
+        foreach ($record->detalles as $detalle) {
+            $detalle->producto->decrement('stock_actual', $detalle->cantidad);
+        }
+    }
     public static function getPages(): array
     {
         return [
