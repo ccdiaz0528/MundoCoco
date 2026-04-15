@@ -15,35 +15,29 @@ class CajasTable
         return $table
             ->columns([
                 TextColumn::make('fecha')
-                    ->date()
+                    ->label('Fecha')
+                    ->date('d/m/Y')
                     ->sortable(),
                 TextColumn::make('saldo_inicial')
-                    ->numeric()
+                    ->label('Saldo Inicial')
+                    ->money('COP')
                     ->sortable(),
                 TextColumn::make('total_efectivo')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Efectivo')
+                    ->money('COP'),
                 TextColumn::make('total_transferencias')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Transferencias')
+                    ->money('COP'),
                 TextColumn::make('total_tarjetas')
-                    ->numeric()
-                    ->sortable(),
+                    ->label('Tarjetas')
+                    ->money('COP'),
                 TextColumn::make('total_ventas')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Total del Día')
+                    ->money('COP')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->weight('bold'),
             ])
-            ->filters([
-                //
-            ])
+            ->defaultSort('fecha', 'desc')
             ->recordActions([
                 EditAction::make(),
             ])
