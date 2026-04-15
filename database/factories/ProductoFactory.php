@@ -19,6 +19,7 @@ class ProductoFactory extends Factory
     {
         $precioCosto = fake()->randomFloat(2, 10, 100);
         $precioVenta = $precioCosto * fake()->randomFloat(1, 1.2, 2.0);
+        $stockMinimo = fake()->numberBetween(5, 20);
 
         return [
             'categoria_id' => Categoria::factory(),
@@ -26,8 +27,8 @@ class ProductoFactory extends Factory
             'descripcion' => fake()->sentence(),
             'precio_costo' => $precioCosto,
             'precio_venta' => round($precioVenta, 2),
-            'stock_actual' => fake()->numberBetween(0, 100),
-            'stock_minimo' => fake()->numberBetween(5, 20),
+            'stock_minimo' => $stockMinimo,
+            'stock_actual' => fake()->numberBetween($stockMinimo + 1, 100),
             'activo' => true,
         ];
     }
