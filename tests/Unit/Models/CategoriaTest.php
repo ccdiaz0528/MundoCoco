@@ -22,10 +22,10 @@ describe('Categoria', function () {
     });
 
     it('puede filtrar categorías activas', function () {
-        Categoria::factory()->create(['activa' => false]);
-        Categoria::factory(2)->create(['activa' => true]);
+        Categoria::factory()->create(['activo' => false]);
+        Categoria::factory(2)->create(['activo' => true]);
 
-        $categoriasActivas = Categoria::where('activa', true)->get();
+        $categoriasActivas = Categoria::where('activo', true)->get();
 
         expect($categoriasActivas->count())->toBe(2);
     });

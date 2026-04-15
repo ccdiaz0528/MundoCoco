@@ -9,7 +9,7 @@ describe('Caja', function () {
             'estado' => 'abierta',
         ]);
 
-        expect($caja->saldo_inicial)->toBe(500);
+        expect((float)$caja->saldo_inicial)->toEqual(500.0);
         expect($caja->estado)->toBe('abierta');
     });
 
@@ -20,7 +20,7 @@ describe('Caja', function () {
             'saldo_real' => 1000,
         ]);
 
-        expect($caja->saldo_real)->toBe(1000);
+        expect((float)$caja->saldo_real)->toEqual(1000.0);
     });
 
     it('puede cerrarse', function () {
@@ -37,9 +37,9 @@ describe('Caja', function () {
             'total_tarjetas' => 150,
         ]);
 
-        expect($caja->total_efectivo)->toBe(300);
-        expect($caja->total_transferencias)->toBe(200);
-        expect($caja->total_tarjetas)->toBe(150);
+        expect((float)$caja->total_efectivo)->toEqual(300.0);
+        expect((float)$caja->total_transferencias)->toEqual(200.0);
+        expect((float)$caja->total_tarjetas)->toEqual(150.0);
     });
 
     it('calcula diferencia entre saldo real y esperado', function () {
@@ -50,9 +50,9 @@ describe('Caja', function () {
             'diferencia' => 0,
         ]);
 
-        $diferencia = $caja->saldo_real - ($caja->saldo_inicial + $caja->total_ventas);
+        $diferencia = (float)$caja->saldo_real - ((float)$caja->saldo_inicial + (float)$caja->total_ventas);
 
-        expect($diferencia)->toBe(0);
+        expect($diferencia)->toEqual(0.0);
     });
 
     it('puede tener observaciones', function () {

@@ -12,7 +12,7 @@ describe('Gestión de Cajas', function () {
         ]);
 
         expect($caja->estado)->toBe('abierta');
-        expect($caja->saldo_inicial)->toBe(500);
+        expect((float)$caja->saldo_inicial)->toEqual(500.0);
     });
 
     it('puede cerrar una caja', function () {
@@ -46,18 +46,19 @@ describe('Gestión de Cajas', function () {
         ]);
 
         // El total de ventas debe sumar
-        expect(Venta::sum('total'))->toBe(400);
+        $totalVentas = Venta::sum('total');
+        expect($totalVentas)->toEqual(400);
     });
 
     it('puede detectar discrepancias en caja', function () {
         $caja = Caja::factory()->create([
             'saldo_inicial' => 1000,
             'total_ventas' => 500,
-            'saldo_real' => 1450, // Hay diferencia de 50
+            'saldo_real' => 1450,
             'diferencia' => 50,
         ]);
 
-        expect($caja->diferencia)->toBe(50);
+        expect((float)$caja->diferencia)->toEqual(50.0);
     });
 
     it('registra observaciones al cerrar', function () {
@@ -77,7 +78,7 @@ describe('Gestión de Cajas', function () {
             'estado' => 'abierta',
         ]);
 
-        $cajasHoy = Caja::where('fecha', $hoy)->where('estado', 'abierta')->count();
+        $cajasHoy = Caja::whereDate('fecha', $hoy)->where('estado', 'abierta')->count();
 
         expect($cajasHoy)->toBeGreaterThanOrEqual(1);
     });

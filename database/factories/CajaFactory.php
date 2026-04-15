@@ -19,7 +19,8 @@ class CajaFactory extends Factory
         $saldoInicial = fake()->randomFloat(2, 100, 1000);
 
         return [
-            'fecha' => fake()->dateTime(),
+            'fecha' => now()->toDateString(),
+            'estado' => 'abierta',
             'saldo_inicial' => $saldoInicial,
             'total_efectivo' => 0,
             'total_transferencias' => 0,
@@ -27,7 +28,6 @@ class CajaFactory extends Factory
             'total_ventas' => 0,
             'saldo_real' => $saldoInicial,
             'diferencia' => 0,
-            'estado' => 'abierta',
             'observaciones' => fake()->optional()->sentence(),
         ];
     }
