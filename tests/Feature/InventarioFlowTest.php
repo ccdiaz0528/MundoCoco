@@ -67,9 +67,9 @@ describe('Gestión de Inventario', function () {
             'precio_venta' => 200,
         ]);
 
-        $ganancia = $producto->precio_venta - $producto->precio_costo;
+        $ganancia = (float) $producto->precio_venta - (float) $producto->precio_costo;
 
-        expect($ganancia)->toBe(100);
+        expect($ganancia)->toBe(100.0);
     });
 
     it('registra todas las ventas de un producto', function () {
@@ -81,10 +81,10 @@ describe('Gestión de Inventario', function () {
 
     it('puede listar productos con stock bajo', function () {
         Producto::factory(3)->stockBajo()->create();
-        Producto::factory(5)->create(['stock_actual' => 50]);
+        Producto::factory(5)->create(['stock_actual' => 50, 'stock_minimo' => 10]);
 
-        $conStockBajo = Producto::where('stock_actual', '<=', 'stock_minimo')->count();
+        $conStockBajo = Producto::whereColumn('stock_actual', '<=', 'stock_minimo')->count();
 
-        expect($conStockBajo)->toBeGreaterThanOrEqual(0);
+        expect($conStockBajo)->toBe(3);
     });
 });

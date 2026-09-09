@@ -13,8 +13,12 @@ class MetodoPagoForm
         return $schema
             ->components([
                 TextInput::make('nombre')
-                    ->required(),
+                    ->label('Nombre')
+                    ->required()
+                    ->maxLength(100)
+                    ->placeholder('Ej.: Efectivo, Transferencia, Tarjeta'),
                 Toggle::make('activo')
+                    ->label('Activo')
                     ->required(),
             ]);
     }

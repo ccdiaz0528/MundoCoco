@@ -3,9 +3,10 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\Rules\Password;
 
 class UserForm
 {
@@ -14,17 +15,36 @@ class UserForm
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->required(),
+                    ->label('Nombre')
+                    ->required()
+                    ->maxLength(255),
                 TextInput::make('email')
-                    ->label('Email address')
+                    ->label('Correo electrónico')
                     ->email()
-                    ->required(),
-                DateTimePicker::make('email_verified_at'),
+                    ->unique(ignoreRecord: true)
+                    ->required()
+                    ->maxLength(255),
+                DateTimePicker::make('email_verified_at')
+                    ->label('Correo verificado el')
+                    ->native(false),
                 TextInput::make('password')
+                    ->label('Contraseña')
                     ->password()
-                    ->hiddenOn('edit')
-                    ->required(),
-                Select::make('roles')->relationship('roles', 'name')->multiple()
+                    ->rule(Password::min(12))
+                    ->required(fn (string $operation): bool => $operation === 'create')
+                    ->dehydrated(fn (?string $state): bool => filled($state))
+                    ->confirmed(),
+                TextInput::make('password_confirmation')
+                    ->label('Confirmar contraseña')
+                    ->password()
+                    ->dehydrated(false)
+                    ->required(fn (string $operation): bool => $operation === 'create'),
+                Select::make('roles')
+                    ->label('Roles')
+                    ->relationship('roles', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->searchable(),
             ]);
     }
 }

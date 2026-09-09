@@ -11,17 +11,24 @@ class UserInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('name'),
+                TextEntry::make('name')
+                    ->label('Nombre'),
                 TextEntry::make('email')
-                    ->label('Email address'),
+                    ->label('Correo electrónico'),
+                TextEntry::make('roles.name')
+                    ->label('Roles')
+                    ->badge(),
                 TextEntry::make('email_verified_at')
-                    ->dateTime()
-                    ->placeholder('-'),
+                    ->label('Correo verificado el')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('Sin verificar'),
                 TextEntry::make('created_at')
-                    ->dateTime()
+                    ->label('Creado el')
+                    ->dateTime('d/m/Y H:i')
                     ->placeholder('-'),
                 TextEntry::make('updated_at')
-                    ->dateTime()
+                    ->label('Actualizado el')
+                    ->dateTime('d/m/Y H:i')
                     ->placeholder('-'),
             ]);
     }

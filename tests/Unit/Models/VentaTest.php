@@ -1,9 +1,8 @@
 <?php
 
+use App\Models\MetodoPago;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
-use App\Models\MetodoPago;
-use App\Models\Producto;
 
 describe('Venta', function () {
     it('puede crear una venta', function () {
@@ -13,7 +12,7 @@ describe('Venta', function () {
             'total' => 250.50,
         ]);
 
-        expect($venta->total)->toBe(250.50);
+        expect((float) $venta->total)->toBe(250.50);
         expect($venta->metodoPago->nombre)->toBe('Efectivo');
     });
 
@@ -36,9 +35,9 @@ describe('Venta', function () {
         VentaDetalle::factory()->create(['venta_id' => $venta->id, 'subtotal' => 100]);
         VentaDetalle::factory()->create(['venta_id' => $venta->id, 'subtotal' => 150]);
 
-        $totalDetalles = $venta->detalles()->sum('subtotal');
+        $totalDetalles = (float) $venta->detalles()->sum('subtotal');
 
-        expect($totalDetalles)->toBe(250);
+        expect($totalDetalles)->toBe(250.0);
     });
 
     it('puede tener observaciones', function () {

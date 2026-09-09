@@ -16,15 +16,28 @@ class CategoriasTable
         return $table
             ->columns([
                 TextColumn::make('nombre')
-                    ->searchable(),
+                    ->label('Nombre')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('descripcion')
+                    ->label('Descripción')
+                    ->limit(50)
+                    ->toggleable(),
+                TextColumn::make('productos_count')
+                    ->label('Productos')
+                    ->counts('productos')
+                    ->sortable(),
                 IconColumn::make('activo')
+                    ->label('Activa')
                     ->boolean(),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Creada el')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Actualizada el')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -32,11 +45,11 @@ class CategoriasTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->label('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->label('Eliminar seleccionadas'),
                 ]),
             ]);
     }

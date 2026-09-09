@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class CategoriaResource extends Resource
 {
@@ -20,7 +21,15 @@ class CategoriaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationLabel = 'Categorías';
+
+    protected static UnitEnum|string|null $navigationGroup = 'Catálogo';
+
+    protected static ?int $navigationSort = 5;
+
+    protected static ?string $modelLabel = 'Categoría';
+
+    protected static ?string $pluralModelLabel = 'Categorías';
 
     protected static ?string $recordTitleAttribute = 'nombre';
 

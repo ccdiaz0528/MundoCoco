@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\VentaDetalle;
-use App\Models\Venta;
 use App\Models\Producto;
+use App\Models\Venta;
+use App\Models\VentaDetalle;
 
 describe('VentaDetalle', function () {
     it('puede crear un detalle de venta', function () {
@@ -12,7 +12,7 @@ describe('VentaDetalle', function () {
         ]);
 
         expect($detalle->cantidad)->toBe(3);
-        expect($detalle->precio_unitario)->toBe(100.50);
+        expect((float) $detalle->precio_unitario)->toBe(100.50);
     });
 
     it('pertenece a una venta', function () {
@@ -36,7 +36,7 @@ describe('VentaDetalle', function () {
             'subtotal' => 250,
         ]);
 
-        expect($detalle->subtotal)->toBe(250);
+        expect((float) $detalle->subtotal)->toBe(250.0);
     });
 
     it('el subtotal es cantidad por precio unitario', function () {
@@ -50,6 +50,6 @@ describe('VentaDetalle', function () {
             'subtotal' => $esperado,
         ]);
 
-        expect($detalle->subtotal)->toBe($esperado);
+        expect((float) $detalle->subtotal)->toBe($esperado);
     });
 });

@@ -12,16 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('caja', function (Blueprint $table) {
-        $table->id();
-        $table->date('fecha');
-        $table->decimal('saldo_inicial', 10, 2)->default(0);
-        $table->decimal('total_efectivo', 10, 2)->default(0);
-        $table->decimal('total_transferencias', 10, 2)->default(0);
-        $table->decimal('total_tarjetas', 10, 2)->default(0);
-        $table->decimal('total_ventas', 10, 2)->default(0);
-        $table->text('observaciones')->nullable();
-        $table->timestamps();
-    });
+            $table->id();
+            $table->date('fecha');
+            $table->decimal('saldo_inicial', 10, 2)->default(0);
+            $table->decimal('total_efectivo', 10, 2)->default(0);
+            $table->decimal('total_transferencias', 10, 2)->default(0);
+            $table->decimal('total_tarjetas', 10, 2)->default(0);
+            $table->decimal('total_ventas', 10, 2)->default(0);
+            $table->text('observaciones')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**

@@ -2,12 +2,11 @@
 
 namespace App\Filament\Resources\Cajas\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use App\Services\CajaService;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -45,24 +44,38 @@ class CajasTable
                     ->money('COP'),
 
                 TextColumn::make('total_ventas')
-                    ->label('Total del Día')
+                    ->label('Total Ventas')
                     ->money('COP')
                     ->sortable()
                     ->weight('bold'),
 
+                TextColumn::make('total_gastos')
+                    ->label('Gastos')
+                    ->money('COP')
+                    ->color('danger'),
+
+                TextColumn::make('saldo_teorico')
+                    ->label('Saldo Teórico')
+                    ->money('COP')
+                    ->toggleable(),
+
                 TextColumn::make('saldo_real')
                     ->label('Saldo Real')
                     ->money('COP')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
 
                 TextColumn::make('diferencia')
                     ->label('Diferencia')
                     ->money('COP')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('Pendiente de cierre')
+                    ->badge()
+                    ->color(fn ($state) => $state === null ? 'gray' : ((float) $state === 0.0 ? 'success' : ((float) $state < 0 ? 'danger' : 'warning'))),
             ])
             ->defaultSort('fecha', 'desc')
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->label('Editar')
+                    ->visible(fn ($record): bool => $record->estado === 'abierta'),
 
                 Action::make('cerrarCaja')
                     ->label('Cerrar caja')
@@ -82,19 +95,9 @@ class CajasTable
                             ->nullable(),
                     ])
                     ->action(function ($record, array $data): void {
-                        $record->saldo_real = $data['saldo_real'];
-                        $record->diferencia = $data['saldo_real'] - ($record->saldo_inicial + $record->total_ventas);
-                        $record->estado = 'cerrada';
-                        $record->fecha_cierre = now();
-                        $record->observaciones_cierre = $data['observaciones_cierre'] ?? null;
-                        $record->save();
+                        app(CajaService::class)->cerrar($record, $data);
                     })
                     ->requiresConfirmation(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 }

@@ -11,13 +11,18 @@ class RoleInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('name'),
-                TextEntry::make('guard_name'),
+                TextEntry::make('name')
+                    ->label('Nombre del rol'),
+                TextEntry::make('permissions.name')
+                    ->label('Permisos')
+                    ->badge(),
                 TextEntry::make('created_at')
-                    ->dateTime()
+                    ->label('Creado el')
+                    ->dateTime('d/m/Y H:i')
                     ->placeholder('-'),
                 TextEntry::make('updated_at')
-                    ->dateTime()
+                    ->label('Actualizado el')
+                    ->dateTime('d/m/Y H:i')
                     ->placeholder('-'),
             ]);
     }

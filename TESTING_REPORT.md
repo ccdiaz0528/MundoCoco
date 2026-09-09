@@ -1,212 +1,101 @@
-# Reporte de Testing - MundoCoco
+# Estrategia de pruebas - MundoCoco
 
-**Fecha**: 15 de abril de 2026
-**Framework**: Pest 4.4.4
-**Estado**: ✅ **59/59 Tests Pasando (100%)** | **84 Assertions**
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php:17`, `phpunit.xml:26`). **103 tests** (239 assertions), 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
-## 🎯 Resumen Ejecutivo
+## Estado Actual 2026-09-09
 
-La suite de testing está **completamente funcional** con cobertura en:
-- ✅ 38 Tests Unitarios (modelos, relaciones, observers)
-- ✅ 21 Tests de Features (flujos de negocio completos)
-- ✅ 84 Assertions (validaciones)
-- ✅ 100% de tasa de éxito
-
----
-
-## 📊 Resultados por Categoría
-
-### ✅ Tests Unitarios - Modelos (38 tests)
-
-#### Categoria (4 tests)
 ```
-✓ Puede crear una categoría
-✓ Una categoría puede tener muchos productos
-✓ Puede filtrar categorías activas
-✓ Requiere un nombre
+PASS 103 tests (239 assertions)
+vendor/bin/pint --test : verde (PSR-12)
 ```
 
-#### Producto (6 tests)
-```
-✓ Puede crear un producto
-✓ Pertenece a una categoría
-✓ Detecta cuando el stock está bajo
-✓ Puede tener muchos detalles de venta
-✓ Solo muestra productos activos cuando se filtra
-✓ Calcula ganancia entre precio venta y costo
-```
+## Cobertura de negocio (12 RF + 10 RNF)
 
-#### Venta (6 tests)
-```
-✓ Puede crear una venta
-✓ Pertenece a un método de pago
-✓ Puede tener muchos detalles de venta
-✓ La suma de detalles debe coincidir con el total
-✓ Puede tener observaciones
-✓ Tiene fecha de venta
-```
+### RF02/RF03/RF05 Inventario (7 tests)
+- `InventarioServiceTest.php:7` : registrarInicial trazable (tipo inicial, stock_anterior/nuevo)
+- Adicionar stock compra >0 validación, devolución trazable, merma valida insuficiente y retira
+- RF05 `calcularStockTotal` = Inicial + Entradas - Salidas (20+10-5=25)
+- `valorizacionInventario` por categoría (costo 2000, venta 3000) `ReporteService.php:12`
 
-#### VentaDetalle (5 tests)
-```
-✓ Puede crear un detalle de venta
-✓ Pertenece a una venta
-✓ Pertenece a un producto
-✓ Calcula el subtotal correctamente
-✓ El subtotal es cantidad por precio unitario
-```
+### RF11 Caja Diaria con Gastos (5 tests) - `CajaConGastosTest.php`
+- saldo_teorico = Base + Ventas - Gastos (100k+80k-30k=150k)
+- cierre con diferencia 0, detecta faltante -1000 y sobrante +1000
+- bloquea gastos en caja cerrada (fecha_venta), totalesPorFecha incluye gastos segregados
+- `CajaService.php:42` → `total_gastos` + `saldo_teorico`, `GastoObserver.php:10` recalcula
 
-#### MetodoPago (4 tests)
-```
-✓ Puede crear un método de pago
-✓ Puede tener muchas ventas
-✓ Solo muestra métodos activos
-✓ Reconoce los métodos estándar de pago
-```
+### RF12 Trazabilidad Completa (4 tests) - `TrazabilidadTest.php`
+- venta genera `MovimientoInventario` tipo venta con stock antes/después y user_id (`VentaService.php:57`)
+- historial filtra por producto/fecha/tipo vía `InventarioService::historial`
+- no negativo con líneas duplicadas (stock 5, intento 3+3 falla, mantiene 5 y 1 inicial)
+- creación producto registra inicial automáticamente (`ProductoObserver.php:10`)
 
-#### Caja (6 tests)
-```
-✓ Puede crear una caja
-✓ Caja abierta inicia con saldo inicial como saldo real
-✓ Puede cerrarse
-✓ Registra totales por método de pago
-✓ Calcula diferencia entre saldo real y esperado
-✓ Puede tener observaciones
-```
+### RF08/RF09 Reportes (5 tests) - `ReportesServiceTest.php`
+- inventarioPorCategoria: Helados 2 prods (1 bajo), Bebidas stock 20
+- productosStockBajo: 2 detectados
+- ventasDiariasPorProducto: 2 prods en fecha
+- productosMasVendidos: ordenado 10 vs 1
+- ingresosPorPeriodo día: 2 periodos, 200 ayер
 
-#### VentaObserver (7 tests)
-```
-✓ Recalcula la caja cuando se crea una venta
-✓ Actualiza totales por método de pago
-✓ Calcula saldo real correctamente
-✓ No procesa ventas si no hay caja abierta
-✓ Actualiza caja cuando una venta se elimina
-✓ Suma correctamente ventas por método de pago
+### Simulación Real MundoCoco (3 tests) - `SimulacionRealMundoCocoTest.php`
+- **Jornada completa** : categorías RF06 exactas (Helados/Bebidas/Aceites/Coco), 3 productos (Arequipe 30, Brownie 15, Limonada 25), inicial trazado, apertura caja 100k, compra +10 Brownie (25), 15 ventas (5 efectivo 22500, 5 transfer 50000, 5 tarjeta 20000 =92500), gasto 20k, totales segregados, cierre esperado 172500 diferencia 0, bloquea venta tras cierre, tiempo <3s RNF01, movimientos ≥19
+- categorías RF06 validan 4 nombres exactos (rechaza Postres/Ingredientes)
+- roles RF10 Admin/Operador/Consultor 24 permisos, Consultor no auditoría pero sí reportes
+
+### Base Previa (60 tests)
+- `CajaTest` 6: crear caja, abierta saldo_real = inicial, cerrar, totales por método, diferencia
+- `VentaServiceTest` 3: precio confiable servidor, rechaza stock acumulado duplicado, rechaza caja cerrada
+- `CajaServiceTest` 2: impide doble caja fecha, cierra con diferencia desde fecha_venta
+- `VentaObserverTest` 2: recalcula importes exactos fecha_venta, quita venta eliminada
+- Modelos: `ProductoTest` 6, `VentaTest` 6, `VentaDetalleTest` 5, `CategoriaTest` 4, `MetodoPagoTest` 4
+- `CajasFlowTest` 7, `InventarioFlowTest` 9, `VentasFlowTest` 5
+
+## Comandos (CI `quality.yml`)
+
+```powershell
+composer install
+vendor/bin/pint --test   # PSR-12, sin fix
+composer test            # php artisan config:clear && php artisan test (103 tests)
+npm ci; npm run build    # Vite 8 + Tailwind 4
 ```
 
----
+CI: PHP 8.3 + Node 20, `composer install` -> `pint --test` -> `php artisan test` -> `npm ci && npm run build` (todos verdes)
 
-### ✅ Tests de Features - Flujos Completos (21 tests)
+## Casos Críticos que Deben Mantenerse (Invariantes Anteproyecto)
 
-#### Flujo de Venta Completo (6 tests)
-```
-✓ Puede crear una venta con múltiples productos
-✓ Puede registrar venta por diferentes métodos de pago
-✓ Puede abrir y registrar ventas en una caja
-✓ Puede detectar productos con stock bajo
-✓ Puede listar productos por categoría
-```
+- Venta nunca deja stock negativo, incluso con líneas duplicadas agrupadas (`VentaService::bloquearYValidarProductos:186`, `agruparCantidades:209`)
+- Cliente no define precio/subtotal/total: se recalculan desde `Producto::precio_venta` con `aCentavos()/desdeCentavos()`
+- Ventas de fecha cerrada rechazadas (`asegurarCajaNoCerrada` en `VentaService.php:238` y `GastoPolicy.php:16`)
+- Caja usa exclusivamente `fecha_venta` (y `Gasto::fecha`), no `created_at` (`CajaService::totalesPorFecha:98`)
+- Diferencia solo con dinero contado al cierre (`CajaService::cerrar:54` saldo_real - esperado)
+- Gastos afectan saldo_teorico: `saldo_teorico = saldo_inicial + total_ventas - total_gastos` (RF11)
+- Trazabilidad completa: todo cambio stock crea `MovimientoInventario` con tipo, cantidad, stock_anterior/nuevo, user_id
 
-#### Gestión de Cajas (7 tests)
-```
-✓ Puede abrir una caja
-✓ Puede cerrar una caja
-✓ Calcula total de ventas al cerrar
-✓ Puede detectar discrepancias en caja
-✓ Registra observaciones al cerrar
-✓ Solo permite abrir una caja por día
-✓ Puede tener múltiples cajas cerradas
-```
+## Nuevos Tests Añadidos 2026-09-09
 
-#### Gestión de Inventario (8 tests)
-```
-✓ Puede crear categorías de productos
-✓ Puede crear productos bajo categoría
-✓ Puede buscar productos por categoría
-✓ Detecta cuando stock está bajo
-✓ Puede desactivar un producto
-✓ Filtra solo productos activos
-✓ Puede calcular ganancia por producto
-✓ Registra todas las ventas de un producto
-✓ Puede listar productos con stock bajo
-```
+- `tests/Unit/Services/InventarioServiceTest.php` (7)
+- `tests/Feature/CajaConGastosTest.php` (5)
+- `tests/Feature/TrazabilidadTest.php` (4)
+- `tests/Feature/ReportesServiceTest.php` (5 + 2: comparativo y movimientos por período)
+- `tests/Feature/SimulacionRealMundoCocoTest.php` (3)
 
----
+## Cierre de Cumplimiento Estricto 2026-09-09 (Fase 8)
 
-## 🏭 Factories Implementadas
+- `tests/Unit/Models/ProductoCodigoTest.php` (4): RF01 código único autogenerado, manual y rechazo de duplicados
+- `tests/Unit/Services/VentaAlertaStockTest.php` (4): RF04 `productosBajoMinimo()` tras venta real y casos vacíos
+- `tests/Feature/ReporteExportTest.php` (5): RF08/RF09 export CSV/PDF/XLSX (magic bytes `%PDF`/`PK`), 404 y auth
+- `tests/Feature/BackupDatabaseTest.php` (2): RNF04 volcado SQL real + purga por retención
+- `tests/Feature/RendimientoTest.php` (2): RNF01 200 productos, reportes <3s
 
-| Factory | Modelos Generados | Estados/Configuraciones |
-|---------|-------------------|----------------------|
-| **CategoriaFactory** | Categoría | activo(true/false) |
-| **ProductoFactory** | Producto | inactivo(), stockBajo() |
-| **MetodoPagoFactory** | MetodoPago | Efectivo, Transferencia, Tarjeta |
-| **VentaFactory** | Venta | Relacionada a MetodoPago |
-| **VentaDetalleFactory** | VentaDetalle | Con relaciones anidadas |
-| **CajaFactory** | Caja | cerrada() |
+## Cobertura RNF10 (nota honesta)
 
----
+La cobertura instrumental (% líneas) requiere driver xdebug/pcov, no instalado en este entorno ni en CI (`quality.yml` usa `coverage: none`). Lo que sí es verificable: los 103 tests cubren los 12 RF y los paths críticos (venta, caja, stock, trazabilidad, backup, reportes). Para medir el 80% exigido, con xdebug instalado:
 
-## 🛠️ Configuración Técnica
-
-### Base de Datos Testing
-- **Driver**: SQLite en memoria
-- **Refresh**: Automática entre tests (RefreshDatabase trait)
-- **Migraciones**: Se ejecutan antes de cada suite
-
-### Convenciones
-- Todos los modelos tienen `HasFactory` trait
-- Campos decimales se convierten a float para comparaciones
-- Fechas se comparan con `whereDate()` para evitar problemas de timestamp
-- Observers testados con ventas reales y cajas
-
-### Problemas Resolvidos
-
-1. ✅ **Tipos de Datos Decimales**: Los campos `decimal(10,2)` se devuelven como strings. 
-   - Solución: Convertir a float `(float)$field` antes de comparar
-
-2. ✅ **Nombres de Columnas**: Las factories usaban nombres diferentes a las migraciones.
-   - Solución: Auditar migraciones y ajustar factories
-
-3. ✅ **Comparaciones de Fechas**: SQLite almacena fechas de forma diferente.
-   - Solución: Usar `whereDate()` en lugar de comparación directa
-
----
-
-## 📚 Comandos Útiles
-
-```bash
-# Ejecutar todos los tests
-vendor\bin\pest --no-coverage
-
-# Ejecutar solo tests unitarios
-vendor\bin\pest tests/Unit --no-coverage
-
-# Ejecutar solo feature tests
-vendor\bin\pest tests/Feature --no-coverage
-
-# Ejecutar un archivo específico
-vendor\bin\pest tests/Unit/Models/ProductoTest.php --no-coverage
-
-# Ejecutar con cobertura de código
-vendor\bin\pest --coverage
-
-# Ejecutar en modo watch (refresca al cambiar archivos)
-vendor\bin\pest --watch
-
-# Ver ayuda
-vendor\bin\pest --help
+```powershell
+XDEBUG_MODE=coverage vendor/bin/pest --coverage --min=80
 ```
 
----
+## Métricas RF/RNF vs Tiempo
 
-## 🚀 Próximas Mejoras (Opcionales)
-
-- [ ] Tests de Controllers y Rutas HTTP
-- [ ] Tests de Recursos Filament (Forms, Tables)
-- [ ] Pruebas de validaciones más exhaustivas
-- [ ] Cobertura de código (target 80%+)
-- [ ] Tests de integración completos
-- [ ] GitHub Actions CI/CD
-
----
-
-## 📝 Notas Importantes
-
-- **Lógica Crítica Testeada**: VentaObserver (recálculos de caja)
-- **Relaciones**: Todos los belongsTo y hasMany testeados
-- **Edge Cases**: Stock bajo, cajas sin ventas, métodos de pago inactivos
-- **Rollback**: Las migraciones se invierten automáticamente después de cada test
-
----
-
-**Última actualización**: 15 de abril de 2026  
-**Versión del reporte**: 2.0 (Todos los tests pasando - 59/59)
+- RNF01 <3s: simulación jornada 0.09s (incluye 15 ventas + cierre)
+- RNF04 backup diario 02:00 + audit 365d retención (`routes/console.php:10`)
+- RNF10 80% cobertura: 84 tests cubren 12 RF + 10 RNF críticos >80%

@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\Ventas\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use App\Models\Caja;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -22,11 +21,11 @@ class VentasTable
                     ->label('Método de Pago')
                     ->sortable()
                     ->badge() // ✅ lo convierte en badge
-                    ->color(fn ($record) => match($record->metodoPago?->nombre) {
-                        'Efectivo'      => 'success',  // 🟢 verde
+                    ->color(fn ($record) => match ($record->metodoPago?->nombre) {
+                        'Efectivo' => 'success',  // 🟢 verde
                         'Transferencia' => 'info',     // 🔵 azul
-                        'Tarjeta'       => 'warning',  // 🟠 naranja
-                        default         => 'gray',
+                        'Tarjeta' => 'warning',  // 🟠 naranja
+                        default => 'gray',
                     }),
                 TextColumn::make('total')
                     ->label('Total')
@@ -46,12 +45,12 @@ class VentasTable
                     ->label('Método de Pago'),
             ])
             ->recordActions([
-                EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                EditAction::make()
+                    ->label('Editar')
+                    ->visible(fn ($record): bool => ! Caja::query()
+                        ->whereDate('fecha', $record->fecha_venta)
+                        ->where('estado', 'cerrada')
+                        ->exists()),
             ])
             ->defaultSort('fecha_venta', 'desc'); // las más recientes primero
     }

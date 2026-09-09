@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Producto;
 use App\Models\Categoria;
+use App\Models\Producto;
 use App\Models\VentaDetalle;
 
 describe('Producto', function () {
@@ -12,7 +12,7 @@ describe('Producto', function () {
         ]);
 
         expect($producto->nombre)->toBe('Laptop');
-        expect($producto->precio_venta)->toBe(1200.50);
+        expect((float) $producto->precio_venta)->toBe(1200.50);
     });
 
     it('pertenece a una categoría', function () {
@@ -52,8 +52,8 @@ describe('Producto', function () {
             'precio_venta' => 150,
         ]);
 
-        $ganancia = $producto->precio_venta - $producto->precio_costo;
+        $ganancia = (float) $producto->precio_venta - (float) $producto->precio_costo;
 
-        expect($ganancia)->toBe(50);
+        expect($ganancia)->toBe(50.0);
     });
 });

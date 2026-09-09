@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Gasto;
+use App\Models\Producto;
+use App\Models\Venta;
+use App\Observers\GastoObserver;
+use App\Observers\ProductoObserver;
+use App\Observers\VentaObserver;
 use Illuminate\Support\ServiceProvider;
-use App\Models\Venta;          // ← sin esto, no encuentra Venta
-use App\Observers\VentaObserver; // ← sin esto, no encuentra el Observer
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,5 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Venta::observe(VentaObserver::class);
+        Producto::observe(ProductoObserver::class);
+        Gasto::observe(GastoObserver::class);
     }
 }

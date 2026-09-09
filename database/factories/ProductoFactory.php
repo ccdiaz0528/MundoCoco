@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Categoria;
+use App\Models\Producto;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Producto>
+ * @extends Factory<Producto>
  */
 class ProductoFactory extends Factory
 {
@@ -23,7 +24,8 @@ class ProductoFactory extends Factory
 
         return [
             'categoria_id' => Categoria::factory(),
-            'nombre' => fake()->unique()->word(),
+            'codigo' => 'P-'.fake()->unique()->bothify('######'),
+            'nombre' => 'Producto '.fake()->unique()->numerify('######'),
             'descripcion' => fake()->sentence(),
             'precio_costo' => $precioCosto,
             'precio_venta' => round($precioVenta, 2),

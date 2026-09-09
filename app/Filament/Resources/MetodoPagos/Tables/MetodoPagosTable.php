@@ -16,15 +16,24 @@ class MetodoPagosTable
         return $table
             ->columns([
                 TextColumn::make('nombre')
-                    ->searchable(),
+                    ->label('Nombre')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('ventas_count')
+                    ->label('Ventas')
+                    ->counts('ventas')
+                    ->sortable(),
                 IconColumn::make('activo')
+                    ->label('Activo')
                     ->boolean(),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Creado el')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Actualizado el')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -32,11 +41,11 @@ class MetodoPagosTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->label('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->label('Eliminar seleccionados'),
                 ]),
             ]);
     }

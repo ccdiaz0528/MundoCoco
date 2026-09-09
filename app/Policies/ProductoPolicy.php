@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Producto;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class ProductoPolicy
 {
@@ -13,7 +12,7 @@ class ProductoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Operador']);
+        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
     }
 
     /**
@@ -21,7 +20,7 @@ class ProductoPolicy
      */
     public function view(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin', 'Operador']);;
+        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
     }
 
     /**
@@ -45,7 +44,7 @@ class ProductoPolicy
      */
     public function delete(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin']) && ! $producto->ventaDetalles()->exists();
     }
 
     /**

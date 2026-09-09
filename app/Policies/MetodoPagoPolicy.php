@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\MetodoPago;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class MetodoPagoPolicy
 {
@@ -13,7 +12,7 @@ class MetodoPagoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
     }
 
     /**
@@ -21,7 +20,7 @@ class MetodoPagoPolicy
      */
     public function view(User $user, MetodoPago $metodoPago): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
     }
 
     /**
@@ -45,7 +44,7 @@ class MetodoPagoPolicy
      */
     public function delete(User $user, MetodoPago $metodoPago): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin']) && ! $metodoPago->ventas()->exists();
     }
 
     /**

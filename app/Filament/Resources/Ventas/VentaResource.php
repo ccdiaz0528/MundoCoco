@@ -13,6 +13,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class VentaResource extends Resource
 {
@@ -20,7 +22,20 @@ class VentaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
+    protected static ?string $navigationLabel = 'Ventas';
+
+    protected static UnitEnum|string|null $navigationGroup = 'Operación diaria';
+
     protected static ?int $navigationSort = 1;
+
+    protected static ?string $modelLabel = 'Venta';
+
+    protected static ?string $pluralModelLabel = 'Ventas';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['metodoPago']);
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -38,12 +53,7 @@ class VentaResource extends Resource
             //
         ];
     }
-    public static function afterCreate(Model $record): void
-    {
-        foreach ($record->detalles as $detalle) {
-            $detalle->producto->decrement('stock_actual', $detalle->cantidad);
-        }
-    }
+
     public static function getPages(): array
     {
         return [

@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Categoria;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class CategoriaPolicy
 {
@@ -13,7 +12,7 @@ class CategoriaPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
     }
 
     /**
@@ -21,7 +20,7 @@ class CategoriaPolicy
      */
     public function view(User $user, Categoria $categoria): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
     }
 
     /**
@@ -45,7 +44,7 @@ class CategoriaPolicy
      */
     public function delete(User $user, Categoria $categoria): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->hasRole(['Admin']) && ! $categoria->productos()->exists();
     }
 
     /**

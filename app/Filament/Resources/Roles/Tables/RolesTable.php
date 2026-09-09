@@ -16,15 +16,20 @@ class RolesTable
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label('Nombre')
                     ->searchable(),
-                TextColumn::make('guard_name')
-                    ->searchable(),
+                TextColumn::make('users_count')
+                    ->label('Usuarios')
+                    ->counts('users')
+                    ->sortable(),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Creado el')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Actualizado el')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -32,12 +37,12 @@ class RolesTable
                 //
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                ViewAction::make()->label('Ver'),
+                EditAction::make()->label('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->label('Eliminar seleccionados'),
                 ]),
             ]);
     }

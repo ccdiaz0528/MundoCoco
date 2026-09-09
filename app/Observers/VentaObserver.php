@@ -3,52 +3,34 @@
 namespace App\Observers;
 
 use App\Models\Venta;
-use App\Models\Caja;
+use App\Services\CajaService;
+use Illuminate\Support\Carbon;
 
 class VentaObserver
 {
+    /** @var array<int, Carbon> */
+    private array $fechasOriginales = [];
+
     public function created(Venta $venta): void
     {
-        $this->recalcularCaja($venta);
+        app(CajaService::class)->recalcularCajaAbierta($venta->fecha_venta);
+    }
+
+    public function updating(Venta $venta): void
+    {
+        $this->fechasOriginales[$venta->id] = Carbon::parse($venta->getOriginal('fecha_venta'));
     }
 
     public function updated(Venta $venta): void
     {
-        $this->recalcularCaja($venta);
+        $cajaService = app(CajaService::class);
+        $cajaService->recalcularCajaAbierta($this->fechasOriginales[$venta->id] ?? $venta->fecha_venta);
+        $cajaService->recalcularCajaAbierta($venta->fecha_venta);
+        unset($this->fechasOriginales[$venta->id]);
     }
 
     public function deleted(Venta $venta): void
     {
-        $this->recalcularCaja($venta);
-    }
-
-    private function recalcularCaja(Venta $venta): void
-    {
-        // Busca la caja abierta del mismo día
-        $caja = Caja::whereDate('fecha', today())
-            ->where('estado', 'abierta')
-            ->first();
-
-        if (!$caja) return;
-
-        // Obtiene las ventas del día agrupadas por método de pago
-        $ventas = Venta::whereDate('created_at', today());
-
-        $efectivo       = (clone $ventas)->whereHas('metodoPago', fn($q) => $q->where('nombre', 'Efectivo'))->sum('total');
-        $transferencias = (clone $ventas)->whereHas('metodoPago', fn($q) => $q->where('nombre', 'Transferencia'))->sum('total');
-        $tarjetas       = (clone $ventas)->whereHas('metodoPago', fn($q) => $q->where('nombre', 'Tarjeta'))->sum('total');
-        $totalVentas    = (clone $ventas)->sum('total');
-
-        $caja->saveQuietly([
-            // saveQuietly evita disparar de nuevo los observers
-        ]);
-
-        $caja->total_efectivo        = $efectivo;
-        $caja->total_transferencias  = $transferencias;
-        $caja->total_tarjetas        = $tarjetas;
-        $caja->total_ventas          = $totalVentas;
-        $caja->saldo_real            = $caja->saldo_inicial + $totalVentas;
-        $caja->diferencia            = $caja->saldo_real - ($caja->saldo_inicial + $totalVentas);
-        $caja->saveQuietly();
+        app(CajaService::class)->recalcularCajaAbierta($venta->fecha_venta);
     }
 }

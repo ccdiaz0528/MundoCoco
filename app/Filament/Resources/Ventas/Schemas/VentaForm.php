@@ -23,7 +23,7 @@ class VentaForm
                     ->schema([
                         Select::make('metodo_pago_id')
                             ->label('Método de Pago')
-                            ->relationship('metodoPago', 'nombre')
+                            ->relationship('metodoPago', 'nombre', modifyQueryUsing: fn ($query) => $query->where('activo', true))
                             ->required()
                             ->searchable()
                             ->preload(),
@@ -53,10 +53,12 @@ class VentaForm
                                 Select::make('producto_id')
                                     ->label('Producto')
                                     ->options(
-                                        Producto::where('activo', true)->pluck('nombre', 'id')
+                                        Producto::where('activo', true)->orderBy('nombre')->get()
+                                            ->mapWithKeys(fn (Producto $p) => [$p->id => "{$p->codigo} · {$p->nombre}"])
                                     )
                                     ->required()
                                     ->searchable()
+                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->live()
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         $producto = Producto::find($state);
@@ -66,7 +68,7 @@ class VentaForm
                                         }
                                         // Recalcula el total general
                                         $items = $get('../../detalles');
-                                        $total = collect($items)->sum(fn($i) => floatval($i['subtotal'] ?? 0));
+                                        $total = collect($items)->sum(fn ($i) => floatval($i['subtotal'] ?? 0));
                                         $set('../../total', $total);
                                     })
                                     ->columnSpanFull(), // ✅ ocupa toda la fila
@@ -84,7 +86,7 @@ class VentaForm
                                         $set('subtotal', $subtotal);
                                         // Recalcula el total general
                                         $items = $get('../../detalles');
-                                        $total = collect($items)->sum(fn($i) => floatval($i['subtotal'] ?? 0));
+                                        $total = collect($items)->sum(fn ($i) => floatval($i['subtotal'] ?? 0));
                                         $set('../../total', $total);
                                     }),
 
@@ -93,15 +95,7 @@ class VentaForm
                                     ->numeric()
                                     ->prefix('$')
                                     ->required()
-                                    ->live()
-                                    ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                        $subtotal = floatval($state) * floatval($get('cantidad'));
-                                        $set('subtotal', $subtotal);
-                                        // Recalcula el total general
-                                        $items = $get('../../detalles');
-                                        $total = collect($items)->sum(fn($i) => floatval($i['subtotal'] ?? 0));
-                                        $set('../../total', $total);
-                                    }),
+                                    ->readOnly(),
 
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
@@ -114,7 +108,7 @@ class VentaForm
                             ->minItems(1)
                             ->live()
                             ->afterStateUpdated(function ($state, callable $set) {
-                                $total = collect($state)->sum(fn($i) => floatval($i['subtotal'] ?? 0));
+                                $total = collect($state)->sum(fn ($i) => floatval($i['subtotal'] ?? 0));
                                 $set('total', $total);
                             }),
                     ]),

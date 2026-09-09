@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Caja extends Model
 {
@@ -19,6 +20,8 @@ class Caja extends Model
         'total_transferencias',
         'total_tarjetas',
         'total_ventas',
+        'total_gastos',
+        'saldo_teorico',
         'saldo_real',
         'diferencia',
         'fecha_cierre',
@@ -34,7 +37,14 @@ class Caja extends Model
         'total_transferencias' => 'decimal:2',
         'total_tarjetas' => 'decimal:2',
         'total_ventas' => 'decimal:2',
+        'total_gastos' => 'decimal:2',
+        'saldo_teorico' => 'decimal:2',
         'saldo_real' => 'decimal:2',
         'diferencia' => 'decimal:2',
     ];
+
+    public function gastos(): HasMany
+    {
+        return $this->hasMany(Gasto::class, 'caja_id');
+    }
 }

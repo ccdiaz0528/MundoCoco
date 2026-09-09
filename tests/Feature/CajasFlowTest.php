@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\Caja;
-use App\Models\Venta;
 use App\Models\MetodoPago;
+use App\Models\Venta;
 
 describe('Gestión de Cajas', function () {
     it('puede abrir una caja', function () {
@@ -12,7 +12,7 @@ describe('Gestión de Cajas', function () {
         ]);
 
         expect($caja->estado)->toBe('abierta');
-        expect((float)$caja->saldo_inicial)->toEqual(500.0);
+        expect((float) $caja->saldo_inicial)->toEqual(500.0);
     });
 
     it('puede cerrar una caja', function () {
@@ -58,7 +58,7 @@ describe('Gestión de Cajas', function () {
             'diferencia' => 50,
         ]);
 
-        expect((float)$caja->diferencia)->toEqual(50.0);
+        expect((float) $caja->diferencia)->toEqual(50.0);
     });
 
     it('registra observaciones al cerrar', function () {
@@ -80,7 +80,7 @@ describe('Gestión de Cajas', function () {
 
         $cajasHoy = Caja::whereDate('fecha', $hoy)->where('estado', 'abierta')->count();
 
-        expect($cajasHoy)->toBeGreaterThanOrEqual(1);
+        expect($cajasHoy)->toBe(1);
     });
 
     it('puede tener múltiples cajas cerradas', function () {

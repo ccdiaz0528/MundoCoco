@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Categoria extends Model
 {
@@ -17,8 +18,13 @@ class Categoria extends Model
         'activo',
     ];
 
+    protected function casts(): array
+    {
+        return ['activo' => 'boolean'];
+    }
+
     // Una categoría tiene muchos productos
-    public function productos()
+    public function productos(): HasMany
     {
         return $this->hasMany(Producto::class);
     }

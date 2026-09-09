@@ -2,11 +2,10 @@
 
 namespace App\Filament\Resources\Cajas\Schemas;
 
-use App\Models\MetodoPago;
-use App\Models\Venta;
+use App\Services\CajaService;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -25,7 +24,13 @@ class CajaForm
                             ->label('Fecha')
                             ->required()
                             ->default(now())
-                            ->native(false),
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set): void {
+                                if ($state) {
+                                    self::calcularTotales($state, $set);
+                                }
+                            }),
 
                         TextInput::make('saldo_inicial')
                             ->label('Saldo Inicial')
@@ -37,7 +42,9 @@ class CajaForm
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                 $fecha = $get('fecha');
-                                if (!$fecha) return;
+                                if (! $fecha) {
+                                    return;
+                                }
                                 self::calcularTotales($fecha, $set);
                             }),
                     ]),
@@ -55,7 +62,7 @@ class CajaForm
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_transferencias')
-                            ->label('Total Transferencias')
+                            ->label('Total Transferencias (Nequi)')
                             ->numeric()
                             ->prefix('$')
                             ->default(0)
@@ -71,12 +78,29 @@ class CajaForm
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_ventas')
-                            ->label('Total General del Día')
+                            ->label('Total General Ventas')
                             ->numeric()
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
                             ->hint('Se calcula automáticamente'),
+
+                        TextInput::make('total_gastos')
+                            ->label('Total Gastos del Día')
+                            ->numeric()
+                            ->prefix('$')
+                            ->default(0)
+                            ->readOnly()
+                            ->hint('Materia prima, servicios, etc.')
+                            ->color('danger'),
+
+                        TextInput::make('saldo_teorico')
+                            ->label('Saldo Teórico (Base + Ventas - Gastos)')
+                            ->numeric()
+                            ->prefix('$')
+                            ->default(0)
+                            ->readOnly()
+                            ->hint('Esperado en caja'),
 
                         Textarea::make('observaciones')
                             ->nullable()
@@ -88,15 +112,14 @@ class CajaForm
 
     protected static function calcularTotales(string $fecha, callable $set): void
     {
-        $ventas = Venta::whereDate('fecha_venta', $fecha)->get();
+        $totales = app(CajaService::class)->totalesPorFecha($fecha);
 
-        $efectivo      = MetodoPago::where('nombre', 'Efectivo')->first();
-        $transferencia = MetodoPago::where('nombre', 'Transferencia')->first();
-        $tarjeta       = MetodoPago::where('nombre', 'Tarjeta')->first();
-
-        $set('total_efectivo',       $ventas->where('metodo_pago_id', $efectivo?->id)->sum('total'));
-        $set('total_transferencias', $ventas->where('metodo_pago_id', $transferencia?->id)->sum('total'));
-        $set('total_tarjetas',       $ventas->where('metodo_pago_id', $tarjeta?->id)->sum('total'));
-        $set('total_ventas',         $ventas->sum('total'));
+        $set('total_efectivo', $totales['efectivo']);
+        $set('total_transferencias', $totales['transferencias']);
+        $set('total_tarjetas', $totales['tarjetas']);
+        $set('total_ventas', $totales['total']);
+        $set('total_gastos', $totales['gastos']);
+        // Saldo teórico provisional (sin saldo_inicial); se calcula al abrir/cerrar con saldo inicial
+        $set('saldo_teorico', (float) $totales['total'] - (float) $totales['gastos']);
     }
 }

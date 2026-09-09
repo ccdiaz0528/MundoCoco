@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\MetodoPago;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\MetodoPago>
+ * @extends Factory<MetodoPago>
  */
 class MetodoPagoFactory extends Factory
 {

@@ -1,11 +1,11 @@
 <?php
 
+use App\Models\Caja;
 use App\Models\Categoria;
+use App\Models\MetodoPago;
 use App\Models\Producto;
 use App\Models\Venta;
 use App\Models\VentaDetalle;
-use App\Models\MetodoPago;
-use App\Models\Caja;
 
 describe('Flujo de Venta Completo', function () {
     beforeEach(function () {

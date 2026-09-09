@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class MetodoPagoResource extends Resource
 {
@@ -20,7 +21,15 @@ class MetodoPagoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
-    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationLabel = 'Métodos de Pago';
+
+    protected static UnitEnum|string|null $navigationGroup = 'Catálogo';
+
+    protected static ?int $navigationSort = 6;
+
+    protected static ?string $modelLabel = 'Método de Pago';
+
+    protected static ?string $pluralModelLabel = 'Métodos de Pago';
 
     protected static ?string $recordTitleAttribute = 'nombre';
 
