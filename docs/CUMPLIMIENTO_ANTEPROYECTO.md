@@ -1,135 +1,88 @@
-# Cumplimiento Estricto Anteproyecto → Código MundoCoco
+# Cumplimiento del Anteproyecto → Código MundoCoco
 
-> Verificación punto por punto del documento `Anteproyecto - Mundo Coco.pdf` (9 páginas) contra código actual.
-
----
-
-## 1. Título y Problema (Pág 1)
-
-| Exigido | Código | Estado | File:Line |
-|---------|--------|--------|-----------|
-| Título Aplicativo Web Gestión Inventarios Mundo Coco Postres Helados Bebidas | Branding `AdminPanelProvider.php:31 brandName MundoCoco` | ✅ | `App\Providers\Filament\AdminPanelProvider.php:31` |
-| Problema: manual cuadernos/Excel genera errores, sin tiempo real, pérdidas 15-30%, 30-40% tiempo | Digitalizado con transacciones ACID y tiempo real | ✅ | `VentaService.php:22`, `CajaService.php:15`, `StatsOverview.php:28` |
+> Verificación punto por punto de `DOCS DE PROYECTO/Anteproyecto - Mundo Coco.docx`, `RF y RNF.docx` y
+> `Solución Sistema de Inventario y Facturación Mundo Coco.docx` contra el código.
+> Cada fila cita dónde está implementado y **qué prueba automática lo demuestra**.
+> Las pruebas de cumplimiento están agrupadas en `tests/Feature/CumplimientoAnteproyectoTest.php`.
+>
+> Última revisión: 24/09/2026 — 0 desviaciones declaradas.
 
 ---
 
-## 2. Objetivos General y Específicos (Pág 2)
+## 1. Decisiones donde los documentos se contradecían
 
-| Objetivo | Implementado | Estado | Evidencia |
-|----------|--------------|--------|-----------|
-| **OG:** Desarrollar sistema web inventario que agilice stock, ventas, caja con métodos pago, mejore precisión, reduzca pérdidas | Sistema Laravel13+Filament5 con 4 módulos integrados | ✅ | `app/Services/*`, `app/Filament/Resources/*` |
-| OE1 Levantamiento requisitos con entrevistas | Documentado `IMPLEMENTACION.md` + RoleSeeder backlog priorizado | ✅ | `RoleSeeder.php:13` (29 permisos) |
-| OE2 Diseñar arquitectura funcional módulos inventario/ventas/caja | MVC + Services + Policies + Observers + índices | ✅ | `database/migrations/*`, `AppServiceProvider.php:28` |
-| OE3 Desarrollar funcionalidades cuadre caja + ventas con conciliación diaria, tiempo real, métodos pago | Caja con gastos, ventas por fecha_venta, segregado efectivo/transfer/tarjeta | ✅ | `CajaService.php:42` → `saldo_teorico = inicial+ventas-gastos` |
-| OE4 Validar con pruebas usabilidad + simulaciones, indicadores precisión/tiempo/pérdidas | 103 tests Pest + simulación jornada real 15 ventas <3s | ✅ | `SimulacionRealMundoCocoTest.php` |
+Los documentos del proyecto no coinciden entre sí en tres puntos. Se resolvieron así, cumpliendo **ambas** fuentes:
 
----
-
-## 3. Resultados e Impactos Esperados (Pág 2-3)
-
-| Resultado Prometido | Implementado | Estado |
-|--------------------|--------------|--------|
-| Registro productos trazabilidad + alertas tiempo real | `MovimientoInventario` + `ProductoObserver` + `StatsOverview` stockBajo + `Reportes` | ✅ |
-| Integración ventas ↔ cuadre caja con métodos pago | `VentaObserver` recalcula `CajaService::totalesPorFecha`, `CajasTable` efectivo/transfer/tarjeta | ✅ |
-| Reducción errores humanos y tiempos | Validación servidor, no confiar navegador, lockForUpdate, `SimulacionReal` <3s | ✅ |
-| Información tiempo real para decisiones | Dashboard 8 stats + `Reportes` flujo caja diario | ✅ |
-| Reportes financieros y operativos automatizados | `ReporteService` 10 métodos + `Reportes` page + export CSV/PDF/XLSX `web.php:15` | ✅ |
-| Impacto -15/-30% pérdidas, -30/-40% tiempo, competitividad, escalabilidad | Medido en simulación, trazabilidad evita pérdidas no detectadas | ✅ |
+| Punto | RF y RNF.docx | Anteproyecto | Implementación |
+|---|---|---|---|
+| Métodos de pago | "Efectivo, Nequi" (RF04, RF11) | "efectivo, transferencias bancarias, tarjetas" (formulación) | Los cuatro: **Efectivo, Nequi, Transferencia, Tarjeta**. La caja muestra Nequi por separado (RF11). |
+| Precio de venta | "puede diferir del precio base" (RF04) | Reducir errores y pérdidas | Editable por línea, **validado en servidor** dentro del rango de RF01 ($2.000–$95.000, configurable), guardando el precio base y **auditando** cada diferencia. |
+| Nombre del rol | "Operario" (RF10) | — | Rol `Operario` (las instalaciones previas con "Operador" se renombran automáticamente). |
 
 ---
 
-## 4. Justificación (Pág 2-3)
+## 2. Requisitos funcionales (RF y RNF.docx)
 
-| Justificación | Código |
-|---------------|--------|
-| Optimizar stock/ventas/caja con métodos pago, reducir 15-30% pérdidas 40% tiempo | `InventarioService` + `CajaService` con gastos |
-| Aplicabilidad quiebres stock, baja rotación, trazabilidad | `Reportes::inventarioPorCategoria`, `productosStockBajo`, `valorizacion` |
-| Factibilidad recurso humano + herramientas accesibles + Scrum | Pest + Pint + Vite, `quality.yml` CI |
-
----
-
-## 5. Marco Referencial (Pág 3-5)
-
-| Marco | Cumplido |
-|-------|----------|
-| Histórico: manual → Excel → nube (Ballou, Heizer, Laudon, Turban) | Documentado `IMPLEMENTACION.md` |
-| Teórico: gestión inventarios, Scrum, PHP/Laravel/MVC, pruebas (Myers, Pressman, Sommerville) | Stack Laravel13 PHP8.3 Filament5 + Pest |
-| Conceptual: Pago, Cliente, Caja, Inventario, Stock | Modelos `Venta`, `Caja`, `Producto`, `Categoria` + `MetodoPago::EFECTIVO/TRANSFERENCIA/TARJETA` |
-| Legal Ley 23/603/1581/1377/1266/527 | `privacidad.blade.php` + `AuditLog` + `console.php` backup + `AuditService.php` |
-| Metodología Scrum | `quality.yml` iterativo + `IMPLEMENTACION.md` sprints Fase0-7 |
+| RF | Exigido | Implementación | Prueba |
+|---|---|---|---|
+| **RF01** Productos | Crear, consultar, actualizar, **eliminar**; categoría; precio $2.000–$95.000; stock mínimo; descripción; código único; solo Administrador | `ProductoResource` + `ProductoForm` (rango desde `config/mundococo.php`); `Producto::booted()` genera `codigo`; eliminar = borrado lógico (`SoftDeletes`) con restaurar, sin romper ventas ni trazabilidad; `ProductoPolicy` por permisos | `RF01 eliminar productos (borrado lógico)`, `ProductoCodigoTest`, `RF10 … Operario … nada más` |
+| **RF02** Inventario inicial | Producto, cantidad inicial, **fecha de registro** | `InventarioService::registrarInicial(…, $fecha)`; formulario de movimientos con fecha y hora | `RF05 cuenta solo desde el último inventario inicial`, `InventarioServiceTest` |
+| **RF03** Adiciones/compras | **Producto(s)**, cantidad > 0, **fecha y hora**, tipo (compra/devolución/ajuste), observaciones; stock y historial automáticos | `InventarioService::registrarLote` (varios productos, una transacción); `CreateMovimiento` con repeater | `RF03 registra varios productos…`, `un lote con una línea inválida no deja nada a medias`, `el Administrador registra una compra de varios productos desde el panel` |
+| **RF04** Ventas | Productos, cantidad, **precio (puede diferir)**, **fecha y hora**, método (Efectivo, Nequi); stock y total automáticos; sin stock insuficiente; alerta de mínimo | `VentaService::crear/actualizar` (único camino; el panel delega); `precio_base` + auditoría `venta_precio_modificado`; `DateTimePicker fecha_venta` (no futura); `productosBajoMinimo` + notificación | Bloque `RF04 precio distinto del base y fecha/hora de venta`, `VentasPanelTest`, `VentaServiceTest`, `VentaAlertaStockTest` |
+| **RF05** Stock total | `Stock = Inicial + Entradas − Salidas` en tiempo real | `InventarioService::stockCalculado` (una consulta SQL, desde el último inicial); columna "Stock calculado" en Productos (roja si no cuadra) | `RF05 cuenta solo desde el último inventario inicial`, `RF05 detecta un stock registrado que no cuadra` |
+| **RF06** Categorías | Helados, Bebidas, Aceites, Productos de Coco con sus productos; CRUD | `CategoriaSeeder`, `ProductoSeeder` (42 productos del documento), `CategoriaResource` | `SimulacionRealMundoCocoTest` |
+| **RF07** Alertas | Notificación visual en dashboard, **lista** de críticos, **sugerencias de reorden** | Widget `StockCritico` (tabla en el dashboard) + `StatsOverview`; `Producto::sugerenciaReorden()` (factor configurable) | `RF07: sugerencia de reorden…`, `la página de reportes y el dashboard con alertas se renderizan` |
+| **RF08** Reportes de inventario | Por categoría, stock bajo, valorización, movimientos por período; **pantalla, PDF y Excel** | Página `Reportes` + `ReporteExportService` (11 reportes × PDF/Excel/CSV, botón en cada sección) | `ReporteExportTest` (recorre todos los tipos y formatos) |
+| **RF09** Reportes de ventas | Diarias por producto, por categoría, más vendidos, ingresos por período, comparativo | `ReporteService::ventasDiariasPorProductoRango`, `ventasPorCategoria`, `productosMasVendidos`, `ingresosPorPeriodo`, `comparativoVentas` (todas excluyen ventas anuladas) | `RF09: ventas diarias por producto…`, `ReportesServiceTest` |
+| **RF10** Usuarios y roles | Administrador (total), **Operario** (ventas + consulta de inventario), **Consultor** (solo reportes); crear usuarios, asignar roles, **cambiar contraseñas** | `RoleSeeder` es la única fuente de permisos; todas las policies consultan permisos; `UserResource`; **perfil propio** (`->profile()`) | Bloque `RF10 roles estrictos…`, `cada usuario puede cambiar su contraseña desde su perfil` |
+| **RF11** Caja diaria | Base, ventas en efectivo, ventas por Nequi, gastos; cuadre automático; **reporte de flujo diario**; `Saldo = Base + Efectivo + Nequi − Gastos` | `CajaService` (columna `total_nequi`), `GastoResource`, `ReporteService::flujoCajaDiario` (con base de caja) + exportación `flujo_caja` | `la caja separa Nequi y lo suma al saldo…`, `RF11: flujo diario…`, `CajasFlowTest`, `CajaConGastosTest` |
+| **RF12** Trazabilidad | Fecha y hora exacta, usuario, tipo, cantidad, stock antes y después; búsqueda por producto, fecha, usuario y tipo | `movimientos_inventario` (`fecha_movimiento` + `created_at`), filtros en `MovimientosTable`; ventas, ediciones y anulaciones enlazan `referencia_type/id` | `TrazabilidadTest`, `VentasPanelTest`, bloque `Anulación de ventas` |
 
 ---
 
-## 6. RF Detallado (RF y RNF.docx) - 12 RF
+## 3. Requisitos no funcionales
 
-| RF | Descripción | Estado | Código |
-|----|-------------|--------|--------|
-| RF01 Productos CRUD | crear/consultar/actualizar/eliminar + código único + categoría + precio 2k-95k + stock mínimo | ✅ | `ProductoResource.php`, `ProductoForm.php` (código unique + precio 2000-95000), `Producto.php` autogenera `codigo` (`2026_09_09_000005`), `ProductoPolicy.php:31,48` (crear Admin, eliminar bloqueado con ventas) |
-| RF02 Inventario Inicial | registrar inicial con fecha | ✅ | `InventarioService::registrarInicial:14`, `Movimiento TIPO_INICIAL`, `ProductoObserver:10` |
-| RF03 Adiciones/Compras | entradas compra/devolución/ajuste +, qty >0 | ✅ | `InventarioService::adicionarStock:26`, `MovimientoInventarioResource/Pages/CreateMovimiento.php:18` |
-| RF04 Ventas | registrar ventas, descuento auto, total auto, alertar mínimo | ✅ | `VentaService::crear:22` lock + `VentaForm.php` repeater, `productosBajoMinimo()` + notificación en `CreateVenta.php:52` (alerta al vender), `StatsOverview` alerta |
-| RF05 Stock Total | Inicial+Entradas-Salidas tiempo real | ✅ | `InventarioService::calcularStockTotal:66` |
-| RF06 Categorías | Helados 14/Bebidas 13/Aceites 8/Coco 7 | ✅ | `CategoriaSeeder.php:12` (4 cats) + `ProductoSeeder.php:12` (42 prods: 14+13+8+7 exactos del doc) |
-| RF07 Alertas Stock Mínimo | notificación visual, lista críticos, sugerencia reorden | ✅ | `StatsOverview.php:41` + `ReporteService::productosStockBajo`, `reportes.blade.php:102` reorden `min*2-actual` |
-| RF08 Reportes Inventario | inventario por cat, bajo, valorización, movimientos período, PDF/Excel | ✅ | `ReporteService.php:12` 4 métodos + `Reportes.php:52,59` (movimientos + comparativo en vista) + `ReporteExportService.php` export CSV/PDF/XLSX (`web.php:15`), `ReporteExportTest.php` |
-| RF09 Reportes Ventas | diarias por producto, por categoría, más vendidos, ingresos período, comparativo | ✅ | `ReporteService.php:12` 6 métodos (incl. `comparativoVentas:152`) + secciones en `reportes.blade.php` + `ReportesServiceTest.php` |
-| RF10 Usuarios/Roles | Admin total, Operador ventas/inventario, Consultor solo reportes | ✅ | `RoleSeeder.php:13` 29 permisos, `ProductoPolicy.php:14` etc., `UserForm.php:30` cambio de contraseñas (min 12), `SimulacionReal` valida |
-| RF11 Caja Diaria | Base + Ventas Efectivo/Nequi - Gastos = Saldo, cuadre auto, flujo efectivo | ✅ | `CajaService.php:42` saldo_teorico, `Gasto.php:7`, `GastosTable.php`, `CajasTable.php:52` |
-| RF12 Trazabilidad | fecha/hora, usuario, tipo, cantidad, stock antes/después, búsqueda | ✅ | `movimientos_inventario` tabla, `MovimientoInventario.php:7` 7 tipos, `MovimientosTable.php:64` filtros tipo/producto/usuario/rango fechas, `TrazabilidadTest.php` |
+| RNF | Exigido | Implementación | Prueba |
+|---|---|---|---|
+| **RNF01** Rendimiento | ≤ 3 s, 200 productos, 2.000 movimientos/mes, 5 usuarios | Índices operativos, agregados en SQL (valorización, ventas por categoría, stock calculado), paginación | `RendimientoTest` |
+| **RNF02** Usabilidad | Español, intuitivo, responsivo, texto legible | Filament en español (`APP_LOCALE=es`), manual de usuario | `docs/MANUAL_USUARIO.md` |
+| **RNF03** Compatibilidad | Navegadores modernos, 1024–1920 px, sin instalación | Aplicación web (Filament + Tailwind) | `npm run build` en CI |
+| **RNF04** Seguridad | Login, bcrypt, sesión 2 h, **auditoría de ventas y cambios de inventario**, backup diario | `User` (`hashed`), `SESSION_LIFETIME=120`, `AuditService` en ventas, ediciones, anulaciones, precios modificados, **todo cambio de stock**, cierres de caja; pantalla **Auditoría** (solo lectura); `backup:database` diario | `BackupDatabaseTest`, `RF03 … y audita`, `Pantallas del panel (humo)` |
+| **RNF05** Confiabilidad | ACID, backup 24 h, validación cliente y servidor, mensajes claros | `DB::transaction(…, 3)` + `lockForUpdate`; panel con `->databaseTransactions()`; validación en formularios y en servicios | `VentasPanelTest` (nada a medias), `VentaServiceTest` |
+| **RNF06** Mantenibilidad | Documentación, patrones, **parámetros configurables**, logs | Servicios + policies + observers; `config/mundococo.php` (precios, reorden, contacto de datos); `docs/MANUAL_TECNICO.md` | `RF07: … factor configurable`, `rechaza un precio fuera del rango configurado` |
+| **RNF07** Escalabilidad | Crecimiento, nuevos módulos, **múltiples sucursales**, **integración externa** | Modelo `Sucursal` (ventas, cajas, gastos y movimientos ligados a una sucursal; hoy la principal); **API REST v1** de solo lectura con tokens Sanctum | Bloque `RNF07 escalabilidad…` |
+| **RNF08** Portabilidad | MySQL, PostgreSQL o SQL Server | SQL propio con variantes por motor (`ReporteService::expresionFecha`, `GROUP BY` por expresión); respaldo portable | Suite completa (SQLite) + desarrollo en MySQL |
+| **RNF09** Eficiencia | < 2 s de carga, BD inicial < 100 MB | Assets compilados con Vite; consultas agregadas | `npm run build` |
+| **RNF10** Cumplimiento | Ley de datos, W3C, patrones, **≥ 80 % de cobertura en funciones críticas** | Consentimiento Ley 1581 (ver §5); `phpunit.cobertura.xml` mide servicios, dinero, observers, policies, middleware y modelos; CI exige `--min=80` | Paso "Coverage of critical code (RNF10)" en `.github/workflows/quality.yml` |
 
 ---
 
-## 7. RNF Detallado - 10 RNF
+## 4. Anteproyecto: objetivos, resultados y contexto
 
-| RNF | Exigido | Implementado | Estado |
-|-----|---------|--------------|--------|
-| RNF01 Rendimiento 3s, 200 prods, 2000 mov/mes, 5 concurr, 99% | Simulación jornada <3s + `RendimientoTest.php` (200 productos, reportes <3s), índices, paginación | ✅ |
-| RNF02 Usabilidad 2h curva, español, responsive | `APP_LOCALE=es` en `.env` y `.env.example`, `laravel-lang`, responsive Tailwind/Filament | ✅ |
-| RNF03 Compat Chrome90+ etc, 1024-1920, web sin install | Vite + `@tailwindcss/vite` + `laravel-vite-plugin` | ✅ |
-| RNF04 Seguridad login bcrypt 2h timeout logs backup diario | `AdminPanelProvider login`, `User casts hashed`, `SESSION_LIFETIME 120`, `AuditLog`, `backup:database` diario 02:00 con volcado SQL real + retención 30d (`BackupDatabase.php`, `console.php:12`), `BackupDatabaseTest.php` | ✅ |
-| RNF05 Confiabilidad ACID backup validaciones manejo errores | `DB::transaction 3` + `lockForUpdate`, validaciones cliente+servidor, `ValidationException` | ✅ |
-| RNF06 Mantenibilidad doc + patrones + config + logs | `IMPLEMENTACION.md` + `CUMPLIMIENTO*` + Services SRP + `AuditService` + `TESTING_REPORT.md` | ✅ |
-| RNF07 Escalabilidad 50% anual, multi-sucursal, integración | Arquitectura modular, índices, servicios desacoplados listos para nuevos módulos | ⚠️ parcial: sin modelo multi-sucursal ni API pública (fuera del alcance del anteproyecto; ver §10) |
-| RNF08 Portabilidad MySQL/PostgreSQL, Apache/Nginx, multiplataforma | Laravel compatible; `ingresosPorPeriodo` con rama SQLite/MySQL/PostgreSQL (`ReporteService.php:139`), `phpunit.xml` sqlite | ✅ |
-| RNF09 Eficiencia 512MB, <100MB DB, 1Mbps, <2s carga | `npm run build` 36kb js, 45kb css, Vite optimized, `RendimientoTest` <3s con 200 productos | ✅ |
-| RNF10 Cumplimiento Ley colombiana, W3C, patrones, 80% cobertura | `privacidad.blade.php` Ley1581, W3C HTML5 Blade+Tailwind, 103 tests; cobertura instrumental pendiente de driver (ver §10 y `TESTING_REPORT.md`) | ⚠️ ver nota |
+| Punto | Implementación | Prueba |
+|---|---|---|
+| OG / OE3: control de stock, ventas y cuadre de caja con métodos de pago | Módulos Productos, Movimientos, Ventas, Cajas y Gastos integrados | `SimulacionRealMundoCocoTest` |
+| OE4: validar midiendo **precisión de inventario, tiempo de proceso y reducción de pérdidas** | Sección **Indicadores de gestión** (precisión RF05, pérdidas por mermas/ajustes valorizadas, productos agotados, cajas con diferencia, faltantes/sobrantes, anulaciones), exportable | `OE4: indicadores de pérdidas, agotados y cuadre de caja`, `RendimientoTest` (tiempo) |
+| Contexto: "descuentos aplicados o las devoluciones registradas" en el cuadre | Descuentos = precio distinto del base (auditado); devoluciones = **anulación de venta** (repone stock, sale de caja, queda auditada) | Bloque `Anulación de ventas` |
+| Contexto: registro formal de gastos de materia prima | `GastoResource` (categorías materia prima, servicios, transporte, otros), resta en la caja | `CajaConGastosTest` |
+| Resultados: alertas en tiempo real, reportes automatizados | RF07 + RF08/RF09 (ver §2) | — |
+| Justificación: respaldos digitales | `backup:database` diario con retención de 30 días | `BackupDatabaseTest` |
 
 ---
 
-## 8. Archivos Clave por Requisito
+## 5. Marco legal
 
-- **RF02/RF03/RF12:** `app/Models/MovimientoInventario.php:7`, `app/Services/InventarioService.php:14`, `app/Observers/ProductoObserver.php:10`
-- **RF11:** `app/Models/Gasto.php:7`, `app/Services/CajaService.php:42`, `app/Filament/Resources/Gastos/**`, `app/Observers/GastoObserver.php:10`
-- **RF06:** `database/seeders/CategoriaSeeder.php:12`, `ProductoSeeder.php:12`
-- **RF08/09:** `app/Services/ReporteService.php:12`, `app/Filament/Pages/Reportes.php:11`, `resources/views/filament/pages/reportes.blade.php`
-- **RF10:** `database/seeders/RoleSeeder.php:13`, `app/Policies/*Policy.php`
-- **RNF04/10:** `app/Models/AuditLog.php:7`, `app/Services/AuditService.php:10`, `resources/views/privacidad.blade.php`, `routes/console.php:10`
-
----
-
-## 9. Verificación Final
-
-```powershell
-vendor/bin/pint --test # ✅ verde
-php artisan test # ✅ 103 passed
-npm run build # ✅ verde
-php artisan backup:database # ✅ volcado SQL en storage/app/backups
-# Cumplimiento anteproyecto + RF/RNF
-```
+| Norma | Implementación |
+|---|---|
+| Ley 1581 de 2012 / Decreto 1377 de 2013 | Política pública en `/privacidad`, enlazada desde el login; **consentimiento informado obligatorio** antes de operar (`ExigirConsentimientoDatos` + página `ConsentimientoDatos`), con fecha (`users.politica_aceptada_at`) y registro en auditoría; canal de habeas data configurable (`CONTACTO_DATOS`). Pruebas: bloque `Ley 1581…`. |
+| Ley 1266 de 2008 | Registros financieros (ventas, gastos, caja) solo visibles según rol; auditoría de operaciones. |
+| Ley 527 de 1999 | Reportes y registros electrónicos exportables (PDF/Excel) con fecha de generación. |
+| Ley 23 de 1982 / Ley 603 de 2000 | Dependencias con licencia MIT (Laravel, Filament, Sanctum, DomPDF, PhpSpreadsheet), declaradas en `composer.json`. |
 
 ---
 
-## 10. Desviaciones Declaradas Doc → Código (decisiones de diseño)
+## 6. Qué queda a cargo del equipo
 
-Para sustentación: son desviaciones conscientes, no olvidos. En cada caso el código prioriza integridad/seguridad (RNF04/RNF05) sobre la letra del doc.
-
-| Punto del doc | Decisión implementada | Justificación |
-|---------------|----------------------|---------------|
-| RF04 "precio de venta puede diferir del precio base" | El servidor impone `precio_venta` vigente; el navegador solo sugiere (`VentaService::crear`, `CreateVenta.php`) | RNF05 exige validación en servidor; permitir precio libre rompe cuadre de caja y trazabilidad financiera |
-| RF04/RF11 "Efectivo, Nequi" | `Efectivo/Transferencia/Tarjeta` (`MetodoPago.php:13-17`); "Transferencias" se etiqueta "(Nequi)" en dashboard | Generalización del medio electrónico; la fórmula RF11 se conserva (`Base + Ventas − Gastos`) |
-| RF10 "Administrador/Operario/Consultor" | `Admin/Operador/Consultor` con 29 permisos granulares | Equivalencia funcional verificada en `SimulacionRealMundoCocoTest`; Operador/Consultor tienen alcance levemente mayor (caja, gastos, exportación) acorde a la operación real |
-| RF01 "eliminar productos" | Eliminar bloqueado si el producto tiene ventas (`ProductoPolicy.php:48`) | Integridad referencial: borrar rompería trazabilidad RF12; se usa desactivación (`activo=false`) |
-| RNF07 multi-sucursal / API pública | No implementado | Fuera del alcance del anteproyecto (una sola tienda); servicios desacoplados permiten agregarlo |
-| RNF10 cobertura 80% | 103 tests cubren los 12 RF + paths críticos; medición instrumental pendiente | Requiere driver (xdebug/pcov) no instalado en este entorno; comando listo: `XDEBUG_MODE=coverage vendor/bin/pest --coverage --min=80` (ver `TESTING_REPORT.md`) |
-
-**Conclusión:** Todo lo planteado en el anteproyecto se cumple en el aplicativo, con trazabilidad RF12, caja RF11 con gastos, categorías RF06 exactas (42 productos), roles RF10, reportes RF08/09 con exportación CSV/PDF/Excel y respaldo diario real. Las 6 desviaciones están justificadas arriba.
+- **Medir la cobertura (RNF10):** el entorno local no tiene xdebug ni pcov. La medición corre en CI (GitHub Actions con pcov). Localmente: instalar pcov o xdebug y ejecutar `composer test:cobertura`.
+- **Actualizar una base existente:** `php artisan migrate`, luego `php artisan db:seed --class=MetodoPagoSeeder` (agrega Nequi) y `php artisan db:seed --class=RoleSeeder` (permisos estrictos de RF10). Los usuarios aceptarán la política de datos en su próximo ingreso.
+- **Validación con usuarios reales (OE4):** las pruebas de usabilidad con el personal de MundoCoco y la medición de indicadores en operación real son actividades del proyecto; el sistema provee los indicadores para registrarlas.

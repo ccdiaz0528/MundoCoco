@@ -194,6 +194,29 @@ Auditoría interna de buenas prácticas. Hallazgos críticos corregidos:
 - [x] `APP_KEY` vacía en `.env` (enmascarada por caché de config) + clave fija de tests en `phpunit.xml`; `GastoPolicy::update` deduplicada; guard null-safe en `CreateVenta`
 - [x] Tests 112/112 (259 assertions), `vendor/bin/pint --test` verde
 
+### Fase 10 - Cumplimiento del 100 % del anteproyecto (2026-09-24)
+
+Auditoría de `DOCS DE PROYECTO/` contra el código: el documento de cumplimiento anterior marcaba todo como ✅ pero declaraba 6 desviaciones y omitía otras brechas. Se cerraron todas (matriz en `CUMPLIMIENTO_ANTEPROYECTO.md`):
+
+- [x] Flujo de ventas unificado: `CreateVenta`/`EditVenta` delegan en `VentaService::crear/actualizar` (antes el panel usaba otro camino sin transacción y sin trazar ediciones)
+- [x] RF04: método **Nequi** (+ Transferencia y Tarjeta del anteproyecto), **fecha y hora de venta**, **precio distinto del base** validado en servidor y auditado
+- [x] RF11: `caja.total_nequi`; flujo de efectivo diario con base de caja, por fecha y exportable
+- [x] RF10 estricto: rol **Operario**, Consultor solo reportes, policies por permisos, perfil para cambiar contraseña; `User implements FilamentUser` (sin él, producción negaba el panel a todos)
+- [x] RF01: eliminar productos con borrado lógico y restaurar
+- [x] RF02/RF03: fecha de la transacción y varios productos por registro (`InventarioService::registrarLote`)
+- [x] RF05: `stockCalculado` corregido (contaba movimientos anteriores al último inicial) y visible en Productos
+- [x] RF07: widget de productos críticos con sugerencia de reorden en el dashboard
+- [x] RF08/RF09: 11 reportes exportables a PDF/Excel/CSV; ventas diarias por producto en pantalla
+- [x] Anulación de ventas (devoluciones): repone stock, sale de caja y reportes, queda auditada
+- [x] OE4: indicadores de precisión de inventario, pérdidas, agotados y cuadre de caja
+- [x] RNF04: auditoría de todo cambio de stock + pantalla de auditoría
+- [x] RNF06: parámetros en `config/mundococo.php`; `docs/MANUAL_TECNICO.md`
+- [x] RNF07: modelo `Sucursal` y API REST v1 de solo lectura con Sanctum
+- [x] RNF08: SQL con variantes para SQL Server; respaldo portable
+- [x] RNF10: cobertura medida en CI (pcov, `--min=80` sobre código crítico); Ley 1581 con consentimiento informado obligatorio
+- [x] Errores previos encontrados: `CajaForm` usaba `TextInput::color()` (500 al abrir caja), CI con PHP 8.3 incompatible con el `composer.lock` (Symfony 8 exige 8.4), manual de usuario truncado
+- [x] Tests 160/160 (566 assertions)
+
 ---
 
 ## 4. Log de Cambios Detallado (File:Line)

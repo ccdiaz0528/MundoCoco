@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    RNF10: cobertura mínima del 80% en funcionalidades críticas.
+    Igual que phpunit.xml, pero la cobertura se mide solo sobre la lógica
+    crítica (reglas de negocio, dinero, trazabilidad, permisos y API), no
+    sobre las pantallas de Filament.
+    Uso (requiere pcov o xdebug): composer test:cobertura
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app/Services</directory>
+            <directory>app/Support</directory>
+            <directory>app/Observers</directory>
+            <directory>app/Policies</directory>
+            <directory>app/Http/Middleware</directory>
+            <directory>app/Models</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <!-- Clave fija solo para tests (DB :memory:, sin datos reales) -->
+        <env name="APP_KEY" value="base64:n6P36sSt/7oF2SIzSClsytBHACPKMTT/CCoSCP887Jc="/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_URL" value=""/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

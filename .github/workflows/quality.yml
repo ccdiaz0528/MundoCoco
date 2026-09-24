@@ -13,9 +13,9 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: mbstring, pdo_sqlite
-          coverage: none
+          coverage: pcov
 
       - uses: actions/setup-node@v4
         with:
@@ -30,6 +30,10 @@ jobs:
 
       - name: Run test suite
         run: php artisan test
+
+      # RNF10: mínimo 80% de cobertura en funcionalidades críticas.
+      - name: Coverage of critical code (RNF10)
+        run: vendor/bin/pest --configuration=phpunit.cobertura.xml --coverage --min=80
 
       - name: Build frontend assets
         run: |

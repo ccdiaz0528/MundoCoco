@@ -11,32 +11,33 @@
 2. Escribe tu **correo electrónico** y tu **contraseña**.
 3. Pulsa **Iniciar sesión**.
 
+- **Primer ingreso:** el sistema te muestra la autorización para el tratamiento de tus datos personales (Ley 1581 de 2012). Léela y pulsa **He leído y autorizo el tratamiento de mis datos**; sin esa autorización no puedes operar. La política completa está en `/privacidad` y enlazada desde la pantalla de ingreso.
+- **Cambiar tu contraseña:** menú de tu usuario (arriba a la derecha) → **Perfil**.
+- Si olvidas tu contraseña, pide al Administrador que te asigne una nueva desde **Seguridad → Usuarios**.
 - La sesión se cierra sola después de 2 horas sin actividad.
-- Si olvidas tu contraseña, pide al administrador que te asigne una nueva desde **Seguridad → Usuarios**.
-- La página de **Política de tratamiento de datos** está disponible en `/privacidad`.
 
 ### 1.1 Roles de usuario
 
 | Rol | Qué puede hacer |
 |-----|-----------------|
-| **Administrador** | Todo: catálogo, operación diaria, informes, usuarios, roles y permisos. |
-| **Operador** | Registrar ventas, abrir y cerrar cajas, registrar gastos y movimientos, consultar inventario e informes. No gestiona usuarios ni roles. |
-| **Consultor** | Solo consulta: inventario, ventas, cajas, gastos, movimientos e informes. No puede crear ni editar nada. |
+| **Administrador** | Todo: catálogo, entradas de inventario, ventas y anulaciones, cajas, gastos, informes, auditoría, usuarios y roles. |
+| **Operario** | Registrar y corregir ventas, y consultar el inventario (productos, categorías y movimientos). |
+| **Consultor** | Solo ver y descargar los reportes. |
 
 ---
 
 ## 2. Recorrido diario recomendado
 
-Este es el flujo de trabajo de un día normal en la tienda:
+| Paso | Quién | Dónde |
+|---|---|---|
+| 1. Abrir la caja con el dinero base | Administrador | *Operación diaria → Cajas → Nueva caja* |
+| 2. Registrar entradas de mercancía | Administrador | *Catálogo → Movimientos → Nuevo movimiento* (sección 6.4) |
+| 3. Registrar cada venta | Operario o Administrador | *Operación diaria → Ventas → Nueva venta* (sección 3) |
+| 4. Registrar los gastos del día | Administrador | *Operación diaria → Gastos → Nuevo gasto* (sección 5) |
+| 5. Revisar alertas e informes | Todos según su rol | *Escritorio* e *Informes → Reportes* (sección 8) |
+| 6. Cerrar la caja contando el dinero | Administrador | *Cajas → Cerrar caja* (sección 4) |
 
-1. **Abrir la caja** — *Operación diaria → Cajas → Nueva caja*: indica la fecha de hoy y el dinero base con el que arrancas (saldo inicial).
-2. **Registrar entradas de mercancía** — *Catálogo → Movimientos → Nuevo movimiento*: compras al proveedor, devoluciones o ajustes (ver sección 6).
-3. **Registrar cada venta** — *Operación diaria → Ventas → Nueva venta* (ver sección 3).
-4. **Registrar los gastos del día** — *Operación diaria → Gastos → Nuevo gasto*: materia prima, transporte, servicios (ver sección 5).
-5. **Revisar el día** — *Informes → Reportes* y el *Escritorio* (ver sección 8).
-6. **Cerrar la caja** — en *Cajas*, botón **Cerrar caja**: cuenta el dinero físico, escríbelo como *dinero contado* y confirma. El sistema calcula si sobra o falta (ver sección 4).
-
-> Regla de oro: **una fecha con caja cerrada queda bloqueada**. Ya no se pueden registrar ventas, gastos ni ediciones de ese día. Revisa bien antes de cerrar.
+> Regla de oro: **una fecha con caja cerrada queda bloqueada**. Ya no se pueden registrar, editar ni anular ventas ni gastos de ese día. Revisa bien antes de cerrar.
 
 ---
 
@@ -44,71 +45,72 @@ Este es el flujo de trabajo de un día normal en la tienda:
 
 *Menú: Operación diaria → Ventas.*
 
-Cada fila muestra: número de venta, **método de pago** (Efectivo, Transferencia o Tarjeta), total, observaciones y fecha. Usa el filtro por método de pago para conciliar cada canal.
+Cada fila muestra número de venta, **método de pago** (Efectivo, Nequi, Transferencia o Tarjeta), total, **estado** (Vigente o Anulada), observaciones y fecha. Filtra por método de pago o por anuladas.
 
 ### 3.1 Registrar una venta (Nueva venta)
 
-1. Elige el **método de pago** (solo aparecen los activos).
-2. Escribe observaciones si lo necesitas (opcional).
-3. Pulsa **+ Agregar producto**, elige el producto e indica la **cantidad**.
-4. El **precio lo pone el sistema** automáticamente con el precio de venta vigente del producto; el subtotal y el total se calculan solos. Lo que escriba el navegador nunca decide el valor final: al guardar, el servidor vuelve a leer el precio.
-5. Guarda. El stock se descuenta de inmediato y la venta queda sumada en la caja del día.
+1. Elige el **método de pago**.
+2. Revisa la **fecha y hora de venta**: por defecto es el momento actual; puedes corregirla (por ejemplo, si registras una venta del mediodía más tarde), pero no puede ser futura.
+3. Pulsa **+ Agregar producto**, busca el producto por nombre o código e indica la **cantidad**.
+4. El sistema propone el **precio base** del producto. Si aplicas un descuento o recargo, cámbialo: debe quedar entre **$2.000 y $95.000**. El subtotal y el total se calculan solos.
+5. Guarda. El stock se descuenta de inmediato y la venta se suma a la caja de su fecha. Si algún producto queda en su stock mínimo o por debajo, aparece un aviso.
 
 Reglas importantes:
-- La venta queda registrada con la **fecha y hora actual**; no se puede cambiar.
-- No se puede vender más unidades de las que hay en stock (ni siquiera repartidas en varias líneas del mismo producto).
-- No se pueden vender productos **inactivos**.
-- Si la caja de hoy ya está cerrada, la venta se rechaza.
-- Las ventas **no se pueden eliminar** desde el panel. Si hay un error, corrígelo con **Editar** antes del cierre de caja.
+- No se puede vender más de lo que hay en stock.
+- No se pueden vender productos inactivos ni eliminados.
+- Si la caja de esa fecha ya está cerrada, la venta se rechaza.
+- Toda venta con un precio distinto del base queda registrada en la auditoría con ambos precios.
 
 ### 3.2 Editar una venta
 
-- Solo es posible si la caja de esa fecha sigue **abierta**.
-- Al guardar, el sistema devuelve el stock anterior, aplica las nuevas cantidades, recalcula precios con los valores vigentes y actualiza la caja.
+- Solo si la caja de esa fecha sigue **abierta** y la venta no está anulada.
+- Puedes cambiar productos, cantidades, precios, método de pago, fecha y observaciones. El sistema ajusta el stock solo por la diferencia y registra cada cambio en el historial.
+
+### 3.3 Anular una venta (devolución)
+
+*Solo Administrador.* En la fila de la venta pulsa **Anular**, escribe el motivo y confirma.
+
+- Las unidades vuelven al inventario (quedan como **Devolución** en Movimientos).
+- La venta deja de sumar en la caja y en los reportes, pero **no se borra**: queda marcada como *Anulada* con su motivo.
+- Solo es posible con la caja de esa fecha abierta. Una venta anulada no se puede editar.
 
 ---
 
 ## 4. Cajas (cuadre diario)
 
-*Menú: Operación diaria → Cajas.*
+*Menú: Operación diaria → Cajas. Solo Administrador.*
 
-Cada caja representa un día: saldo inicial (base), ventas separadas por **Efectivo / Transferencias / Tarjetas**, total de ventas, **gastos del día**, **saldo teórico** y, al cerrar, **saldo real** (dinero contado) y **diferencia**.
+Cada caja representa un día: saldo inicial (base), ventas separadas por **Efectivo, Nequi, Transferencias y Tarjetas**, total de ventas, **gastos del día**, **saldo teórico** y, al cerrar, **saldo real** (dinero contado) y **diferencia**.
 
 ### 4.1 Abrir caja (Nueva caja)
 
 1. Indica la **fecha** y el **saldo inicial** (dinero en caja al abrir).
-2. Los totales de ventas y gastos del día se calculan solos si ya hay movimientos de esa fecha.
+2. Los totales de ventas y gastos del día se calculan solos.
 3. Solo puede existir **una caja abierta por fecha**.
 
 ### 4.2 Cerrar caja (botón Cerrar caja)
 
 1. En la fila de la caja abierta pulsa **Cerrar caja**.
-2. Cuenta todo el dinero físico y escríbelo en **Dinero contado**.
-3. Agrega observaciones del cierre si hace falta y confirma.
+2. Cuenta el dinero y escríbelo en **Dinero contado**.
+3. Agrega observaciones si hace falta y confirma.
 
 El sistema calcula:
 
-- **Saldo teórico = saldo inicial + total de ventas − total de gastos**
+- **Saldo teórico = Base + Ventas (Efectivo + Nequi + otros medios) − Gastos**
 - **Diferencia = dinero contado − saldo teórico**
 
-Interpretación de la diferencia:
-- **0** (verde): el cuadre está perfecto.
-- **Negativa** (rojo): falta dinero.
-- **Positiva** (amarillo): sobra dinero.
-
-Al cerrar, la caja queda bloqueada: no se puede editar ni recibir más ventas o gastos de esa fecha. Solo el botón **Editar** de cajas abiertas sigue disponible.
+Una diferencia **0** indica cuadre perfecto; **negativa**, que falta dinero; **positiva**, que sobra. Al cerrar, la caja queda bloqueada.
 
 ---
 
 ## 5. Gastos y egresos
 
-*Menú: Operación diaria → Gastos.*
+*Menú: Operación diaria → Gastos. Solo Administrador.*
 
-Registra aquí todo lo que sale de caja: **materia prima, servicios, transporte u otros**. Cada gasto pide fecha, descripción, categoría, monto y observaciones opcionales.
+Registra lo que sale de caja: **materia prima, servicios, transporte u otros**, con fecha, descripción, categoría, monto y observaciones.
 
-- Los gastos del día **restan en el saldo teórico** de la caja automáticamente.
-- No se pueden registrar ni editar gastos de una fecha con **caja cerrada**.
-- Solo el Administrador puede eliminar un gasto, y únicamente si su caja sigue abierta.
+- Los gastos **restan del saldo teórico** de la caja de su fecha.
+- No se pueden registrar, editar ni eliminar gastos de una fecha con caja cerrada.
 
 ---
 
@@ -118,60 +120,87 @@ Registra aquí todo lo que sale de caja: **materia prima, servicios, transporte 
 
 *Menú: Catálogo → Productos.*
 
-Columnas: nombre, categoría, **precio de venta**, precio de costo, **stock** (en rojo si está en mínimo o por debajo), mínimo y estado activo/inactivo. Filtra por categoría desde el desplegable.
+Columnas: código, nombre, categoría, precios, **stock** (en rojo si está en el mínimo o por debajo), **stock calculado**, mínimo y estado.
 
-**Crear o editar un producto** (botón *Nuevo producto*):
-- Categoría, nombre, descripción (opcional), precio de venta, precio de costo (opcional), **stock actual**, **stock mínimo** (nivel de alerta) y estado activo.
-- Al crear un producto con stock mayor a cero, el sistema registra automáticamente su **inventario inicial** en el historial.
-- Si cambias el stock manualmente al editar, el sistema registra un **ajuste** automático en el historial.
-- Desactivar un producto lo oculta de las ventas sin borrar su historial.
-- Un producto con ventas registradas **no se puede eliminar** (primero debe gestionarlo el Administrador).
-
-**Alertas de stock mínimo:** cuando el stock llega al mínimo o lo baja, el producto se marca en rojo en la lista, aparece en el contador del Escritorio y en los informes con sugerencia de reposición.
+- **Stock calculado** = inventario inicial + entradas − salidas, según el historial. Si aparece en rojo, no coincide con el stock registrado: revisa los movimientos de ese producto.
+- **Crear o editar** (solo Administrador): categoría, nombre, descripción, precio de venta ($2.000–$95.000), precio de costo, stock, stock mínimo y estado. El código se genera solo si lo dejas vacío.
+- Al crear un producto con stock, se registra su **inventario inicial**. Si cambias el stock al editar, se registra un **ajuste** automático.
+- **Eliminar** (solo Administrador) saca el producto del catálogo sin perder sus ventas ni su historial. Para verlo de nuevo usa el filtro **Eliminados** y el botón **Restaurar**.
+- **Desactivar** lo oculta de las ventas sin sacarlo del catálogo.
 
 ### 6.2 Categorías
 
 *Menú: Catálogo → Categorías.*
 
-La tienda trabaja con cuatro líneas: **Helados, Bebidas, Aceites y Productos de Coco**. Puedes crear, editar y ver categorías con su descripción y número de productos. Una categoría con productos **no se puede eliminar**.
+La tienda trabaja con cuatro líneas: **Helados, Bebidas, Aceites y Productos de Coco**. Una categoría con productos no se puede eliminar.
 
 ### 6.3 Métodos de pago
 
-*Menú: Catálogo → Métodos de Pago.*
+*Menú: Catálogo → Métodos de Pago. Solo Administrador.*
 
-Los canales son **Efectivo, Transferencia y Tarjeta**. Puedes crear nuevos, editarlos o desactivarlos. Un método desactivado **desaparece del formulario de ventas**, y uno con ventas registradas no se puede eliminar. La columna *Ventas* indica cuántas ventas usaron cada método.
+Los canales son **Efectivo, Nequi, Transferencia y Tarjeta**. Un método desactivado desaparece del formulario de ventas; uno con ventas no se puede eliminar.
 
 ### 6.4 Movimientos (historial de inventario)
 
 *Menú: Catálogo → Movimientos.*
 
-Es la **trazabilidad completa**: cada entrada o salida de mercancía queda registrada con fecha y hora, usuario que la hizo, tipo, cantidad y **stock antes y después**. Filtra por tipo o por producto.
+Cada entrada o salida queda registrada con **fecha de la transacción**, fecha y hora exacta de registro, usuario, tipo, cantidad y **stock antes y después**. Filtra por **producto, tipo, usuario o rango de fechas**.
 
-**Nuevo movimiento:** elige producto, tipo y cantidad (siempre positiva y mayor a cero):
-- **Inventario Inicial**: fija el stock base del producto.
-- **Compra / Entrada**: suma mercancía del proveedor.
-- **Devolución**: suma devoluciones de clientes.
-- **Ajuste positivo / Ajuste negativo**: correcciones manuales.
-- **Merma / Pérdida**: restas por vencimiento, daño o pérdida.
-- Las **ventas** aparecen aquí automáticamente; no se crean a mano (el sistema lo impide).
+**Nuevo movimiento** (solo Administrador):
+1. Elige el **tipo**, la **fecha y hora** de la transacción, el motivo y las observaciones.
+2. Agrega **uno o varios productos** con su cantidad (siempre mayor a cero).
+3. Guarda: todos los productos se registran juntos; si uno falla (por ejemplo, stock insuficiente en una merma), no se guarda ninguno.
 
-Los movimientos **no se pueden editar ni eliminar**: son el historial oficial del inventario.
+Tipos: **Inventario inicial** (fija el stock base), **Compra**, **Devolución**, **Ajuste positivo**, **Ajuste negativo** y **Merma/Pérdida**. Las ventas y anulaciones aparecen solas. Los movimientos no se pueden editar ni eliminar.
 
 ---
 
 ## 7. Usuarios, roles y permisos
 
-*Menú: Seguridad → Usuarios / Seguridad → Roles (solo Administrador).*
+*Menú: Seguridad → Usuarios / Seguridad → Roles. Solo Administrador.*
 
-### 7.1 Usuarios (Nuevo usuario)
+### 7.1 Usuarios
 
-- **Nombre**, **correo electrónico** (único, es tu acceso), **contraseña** (mínimo 12 caracteres, con confirmación) y **roles**.
-- Al editar, deja la contraseña vacía si no quieres cambiarla.
-- La ficha de cada usuario (botón **Ver**) muestra sus datos, roles y fechas.
+- **Nombre**, **correo electrónico** (único, es el acceso), **contraseña** (mínimo 12 caracteres, con confirmación) y **roles**.
+- Al editar, deja la contraseña vacía para no cambiarla.
 - No puedes eliminar tu propio usuario.
 
-### 7.2 Roles (Nuevo rol)
+### 7.2 Roles
 
-- Cada rol tiene **nombre** y una lista de **permisos** (ventas, caja, gastos, movimientos, informes, usuarios…).
-- Los tres roles de la tienda ya vienen creados: **Administrador, Operador y Consultor**. Puedes ajust
-...[truncated 3880 chars]
+- Los tres roles de la tienda vienen creados: **Admin, Operario y Consultor**, y no se pueden eliminar.
+- Puedes crear roles nuevos con la combinación de permisos que necesites; las pantallas los respetan automáticamente.
+
+---
+
+## 8. Escritorio e informes
+
+### 8.1 Escritorio
+
+- Indicadores del día: ventas de hoy y del mes, ventas en efectivo, **Nequi**, transferencias y tarjetas, gastos y valorización del inventario.
+- **Productos con stock crítico:** lista de los productos en su mínimo o por debajo, con la **sugerencia de reorden** (unidades para volver al nivel objetivo).
+
+### 8.2 Reportes
+
+*Menú: Informes → Reportes. Administrador y Consultor.*
+
+Elige el periodo (**Desde / Hasta**) y pulsa **Aplicar periodo**. Cada sección tiene botones **PDF**, **Excel** y **CSV** para descargarla.
+
+| Sección | Contenido |
+|---|---|
+| Valorización de inventario | Valor del inventario a costo y a precio de venta, ganancia potencial |
+| Indicadores de gestión | Precisión del inventario, pérdidas por mermas y ajustes, productos agotados, cajas con diferencia, ventas anuladas |
+| Inventario por categoría | Productos, stock y valorización por línea |
+| Productos con stock bajo | Con sugerencia de reorden |
+| Comparativo | Periodo elegido frente al anterior de igual duración |
+| Movimientos de inventario | Historial del periodo |
+| Ventas diarias por producto | Unidades e ingreso de cada producto por día |
+| Ventas por categoría / Más vendidos / Ingresos por día | Análisis de ventas del periodo |
+| Flujo de efectivo | Del día *Hasta*: base, ventas por método, gastos, anuladas, saldo y, si la caja se cerró, lo contado y la diferencia |
+
+Las ventas anuladas no se cuentan en ningún reporte de ventas.
+
+### 8.3 Auditoría
+
+*Menú: Informes → Auditoría. Solo Administrador.*
+
+Registro de solo lectura de las operaciones críticas: ventas creadas, editadas y anuladas, precios distintos del base, cambios de inventario, cierres de caja y autorizaciones de datos. Filtra por acción, usuario o fecha.
