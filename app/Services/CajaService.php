@@ -34,11 +34,7 @@ class CajaService
                 'fecha' => $fecha->toDateString(),
                 'estado' => 'abierta',
                 'saldo_inicial' => $this->desdeCentavos($saldoInicial),
-                'total_efectivo' => $totales['efectivo'],
-                'total_transferencias' => $totales['transferencias'],
-                'total_tarjetas' => $totales['tarjetas'],
-                'total_ventas' => $totales['total'],
-                'total_gastos' => $totales['gastos'],
+                ...$this->camposTotales($totales),
                 'saldo_teorico' => $this->desdeCentavos($saldoTeorico),
                 'saldo_real' => $this->desdeCentavos($saldoInicial),
                 'diferencia' => null,
@@ -63,11 +59,7 @@ class CajaService
             $esperado = $this->aCentavos($caja->saldo_inicial) + $this->aCentavos($totales['total']) - $this->aCentavos($totales['gastos']);
 
             $caja->fill([
-                'total_efectivo' => $totales['efectivo'],
-                'total_transferencias' => $totales['transferencias'],
-                'total_tarjetas' => $totales['tarjetas'],
-                'total_ventas' => $totales['total'],
-                'total_gastos' => $totales['gastos'],
+                ...$this->camposTotales($totales),
                 'saldo_teorico' => $this->desdeCentavos($esperado),
                 'saldo_real' => $this->desdeCentavos($saldoReal),
                 'diferencia' => $this->desdeCentavos($saldoReal - $esperado),
@@ -99,43 +91,59 @@ class CajaService
             $totales = $this->totalesPorFecha($fecha);
             $saldoTeorico = $this->aCentavos($caja->saldo_inicial) + $this->aCentavos($totales['total']) - $this->aCentavos($totales['gastos']);
             $caja->fill([
-                'total_efectivo' => $totales['efectivo'],
-                'total_transferencias' => $totales['transferencias'],
-                'total_tarjetas' => $totales['tarjetas'],
-                'total_ventas' => $totales['total'],
-                'total_gastos' => $totales['gastos'],
+                ...$this->camposTotales($totales),
                 'saldo_teorico' => $this->desdeCentavos($saldoTeorico),
             ])->saveQuietly();
         }, 3);
     }
 
-    /** @return array{efectivo: string, transferencias: string, tarjetas: string, total: string, gastos: string} */
+    /** @return array{efectivo: string, nequi: string, transferencias: string, tarjetas: string, total: string, gastos: string} */
     public function totalesPorFecha(CarbonInterface|string $fecha): array
     {
         $fecha = Carbon::parse($fecha);
         $metodos = MetodoPago::query()
-            ->whereIn('nombre', [MetodoPago::EFECTIVO, MetodoPago::TRANSFERENCIA, MetodoPago::TARJETA])
+            ->whereIn('nombre', MetodoPago::NOMBRES)
             ->pluck('id', 'nombre');
 
-        $totalPorMetodo = Venta::query()
+        $totalPorMetodo = Venta::vigentes()
             ->whereDate('fecha_venta', $fecha)
             ->selectRaw('metodo_pago_id, SUM(total) as total')
             ->groupBy('metodo_pago_id')
             ->pluck('total', 'metodo_pago_id');
 
         $efectivo = $this->aCentavos($totalPorMetodo->get($metodos->get(MetodoPago::EFECTIVO), 0));
+        $nequi = $this->aCentavos($totalPorMetodo->get($metodos->get(MetodoPago::NEQUI), 0));
         $transferencias = $this->aCentavos($totalPorMetodo->get($metodos->get(MetodoPago::TRANSFERENCIA), 0));
         $tarjetas = $this->aCentavos($totalPorMetodo->get($metodos->get(MetodoPago::TARJETA), 0));
-        $total = $this->aCentavos(Venta::query()->whereDate('fecha_venta', $fecha)->sum('total'));
+        $total = $this->aCentavos(Venta::vigentes()->whereDate('fecha_venta', $fecha)->sum('total'));
         // RF11: gastos del día (compras/materia prima)
         $gastos = $this->aCentavos(Gasto::whereDate('fecha', $fecha)->sum('monto'));
 
         return [
             'efectivo' => $this->desdeCentavos($efectivo),
+            'nequi' => $this->desdeCentavos($nequi),
             'transferencias' => $this->desdeCentavos($transferencias),
             'tarjetas' => $this->desdeCentavos($tarjetas),
             'total' => $this->desdeCentavos($total),
             'gastos' => $this->desdeCentavos($gastos),
+        ];
+    }
+
+    /**
+     * Columnas total_* de la caja a partir de totalesPorFecha().
+     *
+     * @param  array{efectivo: string, nequi: string, transferencias: string, tarjetas: string, total: string, gastos: string}  $totales
+     * @return array<string, string>
+     */
+    private function camposTotales(array $totales): array
+    {
+        return [
+            'total_efectivo' => $totales['efectivo'],
+            'total_nequi' => $totales['nequi'],
+            'total_transferencias' => $totales['transferencias'],
+            'total_tarjetas' => $totales['tarjetas'],
+            'total_ventas' => $totales['total'],
+            'total_gastos' => $totales['gastos'],
         ];
     }
 }

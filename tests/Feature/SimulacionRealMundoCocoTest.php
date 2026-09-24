@@ -139,10 +139,10 @@ describe('Simulación Real MundoCoco', function () {
         expect(Categoria::where('nombre', 'Ingredientes')->exists())->toBeFalse();
     });
 
-    it('valida roles RF10 Admin Operador Consultor con permisos diferenciados', function () {
+    it('valida roles RF10 Admin Operario Consultor con permisos diferenciados', function () {
         (new RoleSeeder)->run();
         expect(Role::where('name', 'Admin')->exists())->toBeTrue();
-        expect(Role::where('name', 'Operador')->exists())->toBeTrue();
+        expect(Role::where('name', 'Operario')->exists())->toBeTrue();
         expect(Role::where('name', 'Consultor')->exists())->toBeTrue();
 
         $admin = User::factory()->create();

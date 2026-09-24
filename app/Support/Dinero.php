@@ -27,6 +27,10 @@ trait Dinero
 
     private function desdeCentavos(int $centavos): string
     {
-        return sprintf('%d.%02d', intdiv($centavos, 100), abs($centavos % 100));
+        // Signo aparte: intdiv(-50, 100) es 0 y perdería el "-" de -0.50.
+        $signo = $centavos < 0 ? '-' : '';
+        $absoluto = abs($centavos);
+
+        return sprintf('%s%d.%02d', $signo, intdiv($absoluto, 100), $absoluto % 100);
     }
 }

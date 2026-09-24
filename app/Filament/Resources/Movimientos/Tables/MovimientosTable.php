@@ -59,10 +59,16 @@ class MovimientosTable
                     ->label('Motivo')
                     ->limit(25)
                     ->toggleable(),
-                TextColumn::make('created_at')
-                    ->label('Fecha')
+                TextColumn::make('fecha_movimiento')
+                    ->label('Fecha transacción')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+                // RF12: fecha y hora exacta en que se registró en el sistema.
+                TextColumn::make('created_at')
+                    ->label('Registrado')
+                    ->dateTime('d/m/Y H:i:s')
+                    ->sortable()
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('tipo')
@@ -78,7 +84,9 @@ class MovimientosTable
                     ]),
                 SelectFilter::make('producto_id')
                     ->relationship('producto', 'nombre')
-                    ->label('Producto'),
+                    ->label('Producto')
+                    ->searchable()
+                    ->preload(),
                 // RF12: búsqueda por usuario que realizó el movimiento.
                 SelectFilter::make('user_id')
                     ->relationship('user', 'name')
@@ -86,17 +94,17 @@ class MovimientosTable
                     ->searchable()
                     ->preload(),
                 // RF12: búsqueda por rango de fechas.
-                Filter::make('created_at')
+                Filter::make('fecha_movimiento')
                     ->label('Fecha')
                     ->form([
                         DatePicker::make('desde')->label('Desde'),
                         DatePicker::make('hasta')->label('Hasta'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when($data['desde'] ?? null, fn (Builder $q, $fecha): Builder => $q->whereDate('created_at', '>=', $fecha))
-                        ->when($data['hasta'] ?? null, fn (Builder $q, $fecha): Builder => $q->whereDate('created_at', '<=', $fecha))),
+                        ->when($data['desde'] ?? null, fn (Builder $q, $fecha): Builder => $q->whereDate('fecha_movimiento', '>=', $fecha))
+                        ->when($data['hasta'] ?? null, fn (Builder $q, $fecha): Builder => $q->whereDate('fecha_movimiento', '<=', $fecha))),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('fecha_movimiento', 'desc')
             ->recordActions([]);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PerteneceASucursal;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Venta extends Model
 {
     use HasFactory;
+
+    // RNF07: ligado a una sucursal (la principal por defecto).
+    use PerteneceASucursal;
 
     protected $table = 'ventas';
 
@@ -22,6 +27,7 @@ class Venta extends Model
 
     protected $casts = [
         'fecha_venta' => 'datetime',
+        'anulada_at' => 'datetime',
         'total' => 'decimal:2',
     ];
 
@@ -35,5 +41,21 @@ class Venta extends Model
     public function detalles(): HasMany
     {
         return $this->hasMany(VentaDetalle::class);
+    }
+
+    public function anuladaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'anulada_por');
+    }
+
+    public function anulada(): bool
+    {
+        return $this->anulada_at !== null;
+    }
+
+    /** Ventas que cuentan en caja y reportes (no anuladas). */
+    public function scopeVigentes(Builder $query): Builder
+    {
+        return $query->whereNull($query->qualifyColumn('anulada_at'));
     }
 }

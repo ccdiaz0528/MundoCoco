@@ -12,6 +12,7 @@ use App\Models\Venta;
 use App\Services\VentaService;
 use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Livewire\Livewire;
 
 /*
@@ -23,7 +24,7 @@ describe('Ventas desde el panel Filament', function () {
     beforeEach(function () {
         $this->seed(RoleSeeder::class);
         $usuario = User::factory()->create();
-        $usuario->assignRole('Operador');
+        $usuario->assignRole('Operario');
         $this->actingAs($usuario);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
 
@@ -37,7 +38,7 @@ describe('Ventas desde el panel Filament', function () {
                 'metodo_pago_id' => $this->efectivo->id,
                 'total' => 1,
                 'detalles' => [
-                    ['producto_id' => $this->producto->id, 'cantidad' => 3, 'precio_unitario' => 1, 'subtotal' => 1],
+                    ['producto_id' => $this->producto->id, 'cantidad' => 3, 'precio_unitario' => 5000, 'subtotal' => 1],
                 ],
             ])
             ->call('create')
@@ -57,6 +58,22 @@ describe('Ventas desde el panel Filament', function () {
             ->and($movimiento->referencia_id)->toBe($venta->id);
 
         expect(AuditLog::where('accion', 'venta_creada')->count())->toBe(1);
+    });
+
+    it('lista los productos activos al abrir el selector, sin necesidad de escribir', function () {
+        $inactivo = Producto::factory()->create(['activo' => false]);
+
+        $pagina = Livewire::test(CreateVenta::class)
+            ->fillForm(['detalles' => [['cantidad' => 1]]]);
+        $item = array_key_first($pagina->get('data.detalles'));
+
+        $pagina->assertFormFieldExists("detalles.{$item}.producto_id", function (Select $campo) use ($inactivo): bool {
+            $opciones = $campo->getOptions();
+
+            return array_key_exists($this->producto->id, $opciones)
+                && ! array_key_exists($inactivo->id, $opciones)
+                && array_key_exists($this->producto->id, $campo->getSearchResults($this->producto->codigo));
+        });
     });
 
     it('rechaza sobreventa y no deja nada a medias', function () {

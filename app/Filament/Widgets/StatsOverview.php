@@ -15,10 +15,10 @@ class StatsOverview extends BaseWidget
     protected function getStats(): array
     {
         // Ventas de hoy
-        $ventasHoy = Venta::whereDate('fecha_venta', today())->sum('total');
+        $ventasHoy = Venta::vigentes()->whereDate('fecha_venta', today())->sum('total');
 
         // Ventas del mes actual
-        $ventasMes = Venta::whereMonth('fecha_venta', now()->month)
+        $ventasMes = Venta::vigentes()->whereMonth('fecha_venta', now()->month)
             ->whereYear('fecha_venta', now()->year)
             ->sum('total');
 
@@ -54,8 +54,13 @@ class StatsOverview extends BaseWidget
                 ->color('success')
                 ->icon('heroicon-o-currency-dollar'),
 
+            Stat::make('Nequi Hoy', '$ '.number_format((float) $totalesHoy['nequi'], 0, ',', '.'))
+                ->description('Ventas por Nequi')
+                ->color('warning')
+                ->icon('heroicon-o-device-phone-mobile'),
+
             Stat::make('Transferencias Hoy', '$ '.number_format((float) $totalesHoy['transferencias'], 0, ',', '.'))
-                ->description('Ventas por transferencia (Nequi)')
+                ->description('Transferencias bancarias')
                 ->color('warning')
                 ->icon('heroicon-o-device-phone-mobile'),
 

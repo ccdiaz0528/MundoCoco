@@ -9,8 +9,10 @@ use Illuminate\Support\Facades\Storage;
 /**
  * RNF04/RNF05: respaldo diario de la base de datos.
  * Genera un volcado SQL en storage/app/backups y purga copias
- * con más de 30 días. Funciona con SQLite y MySQL sin
- * herramientas externas (no requiere mysqldump).
+ * con más de 30 días, sin herramientas externas (no requiere mysqldump).
+ * RNF08: MySQL y SQLite incluyen estructura y datos; en PostgreSQL y
+ * SQL Server se vuelcan los datos y la estructura se recrea con
+ * "php artisan migrate".
  */
 class BackupDatabase extends Command
 {
@@ -46,12 +48,15 @@ class BackupDatabase extends Command
         ];
 
         foreach ($this->tablas($pdo, $driver) as $tabla) {
+            // Cada motor entrecomilla distinto (en MySQL las comillas dobles son literales).
+            $identificador = match ($driver) {
+                'mysql' => "`{$tabla}`",
+                'sqlsrv' => "[{$tabla}]",
+                default => "\"{$tabla}\"",
+            };
             $lineas[] = "-- Tabla: {$tabla}";
-            $lineas[] = $this->crearTabla($pdo, $driver, $tabla).';';
-            // Identificadores entre comillas dobles son literales en MySQL
-            // (sin ANSI_QUOTES); cada driver usa su propio entrecomillado.
-            $identificador = $driver === 'mysql' ? "`{$tabla}`" : "\"{$tabla}\"";
-            foreach ($this->filas($pdo, $tabla) as $fila) {
+            $lineas[] = $this->crearTabla($pdo, $driver, $tabla);
+            foreach ($pdo->query("SELECT * FROM {$identificador}")->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
                 $valores = array_map(fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), array_values($fila));
                 $lineas[] = "INSERT INTO {$identificador} VALUES (".implode(', ', $valores).');';
             }
@@ -64,29 +69,23 @@ class BackupDatabase extends Command
     /** @return array<int, string> */
     private function tablas(\PDO $pdo, string $driver): array
     {
-        $sql = $driver === 'mysql'
-            ? 'SHOW FULL TABLES WHERE Table_type = \'BASE TABLE\''
-            : "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+        $sql = match ($driver) {
+            'mysql' => 'SHOW FULL TABLES WHERE Table_type = \'BASE TABLE\'',
+            'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' ORDER BY table_name",
+            'sqlsrv' => "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME",
+            default => "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        };
 
         return array_column($pdo->query($sql)->fetchAll(\PDO::FETCH_NUM), 0);
     }
 
     private function crearTabla(\PDO $pdo, string $driver, string $tabla): string
     {
-        if ($driver === 'mysql') {
-            return $pdo->query("SHOW CREATE TABLE `{$tabla}`")->fetch(\PDO::FETCH_NUM)[1];
-        }
-
-        return $pdo->query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '{$tabla}'")->fetchColumn();
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    private function filas(\PDO $pdo, string $tabla): array
-    {
-        $driver = DB::connection()->getDriverName();
-        $comilla = $driver === 'mysql' ? '`' : '"';
-
-        return $pdo->query("SELECT * FROM {$comilla}{$tabla}{$comilla}")->fetchAll(\PDO::FETCH_ASSOC);
+        return match ($driver) {
+            'mysql' => $pdo->query("SHOW CREATE TABLE `{$tabla}`")->fetch(\PDO::FETCH_NUM)[1].';',
+            'sqlite' => $pdo->query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '{$tabla}'")->fetchColumn().';',
+            default => '-- Estructura: recrear con "php artisan migrate" antes de cargar los datos.',
+        };
     }
 
     private function purgar(int $retencion): void

@@ -21,7 +21,7 @@ class ProductoForm
                     ->searchable()
                     ->preload(),
                 TextInput::make('codigo')
-                    ->label('Código (RF01)')
+                    ->label('Código')
                     ->helperText('Único en el catálogo. Se genera automáticamente si se deja vacío.')
                     ->maxLength(20)
                     ->unique(ignoreRecord: true),
@@ -37,9 +37,9 @@ class ProductoForm
                     ->label('Precio de Venta')
                     ->numeric()
                     ->prefix('$')
-                    ->minValue(2000)
-                    ->maxValue(95000)
-                    ->helperText('RF01: entre $2.000 y $95.000.')
+                    ->minValue(fn (): int => config('mundococo.precio_venta_min'))
+                    ->maxValue(fn (): int => config('mundococo.precio_venta_max'))
+                    ->helperText(fn (): string => 'Entre $'.number_format(config('mundococo.precio_venta_min'), 0, ',', '.').' y $'.number_format(config('mundococo.precio_venta_max'), 0, ',', '.').'.')
                     ->required(),
                 TextInput::make('precio_costo')
                     ->label('Precio de Costo')

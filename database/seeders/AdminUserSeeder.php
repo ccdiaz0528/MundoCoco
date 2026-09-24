@@ -7,9 +7,12 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Crea o actualiza el usuario administrador inicial.
+ * Crea el usuario administrador inicial.
  * Las credenciales SIEMPRE vienen del entorno (ver .env.example ADMIN_*);
  * sin ellas el seeder no crea nada, para nunca publicar claves por defecto.
+ * Si el usuario ya existe no se toca su nombre ni su contraseña (pudo
+ * cambiarlos desde el panel): re-sembrar solo garantiza el rol Admin.
+ * Tras el primer despliegue ADMIN_PASSWORD puede borrarse del .env.
  */
 class AdminUserSeeder extends Seeder
 {
@@ -19,18 +22,21 @@ class AdminUserSeeder extends Seeder
         $password = (string) config('mundococo.admin_password');
 
         if ($email === '' || $password === '') {
-            $this->command->warn('AdminUserSeeder omitido: defina ADMIN_EMAIL y ADMIN_PASSWORD en .env');
+            $this->command?->warn('AdminUserSeeder omitido: defina ADMIN_EMAIL y ADMIN_PASSWORD en .env');
 
             return;
         }
 
-        $usuario = User::firstOrNew(['email' => $email]);
-        $usuario->name = (string) config('mundococo.admin_name');
-        $usuario->password = Hash::make($password);
-        $usuario->save();
+        $usuario = User::firstOrCreate(['email' => $email], [
+            'name' => (string) config('mundococo.admin_name'),
+            'password' => Hash::make($password),
+        ]);
 
-        $usuario->syncRoles(['Admin']);
+        // assignRole (no syncRoles): conserva otros roles que se le hayan dado.
+        $usuario->assignRole('Admin');
 
-        $this->command->info("Administrador listo: {$email}");
+        $this->command?->info($usuario->wasRecentlyCreated
+            ? "Administrador creado: {$email}"
+            : "Administrador existente conservado: {$email}");
     }
 }

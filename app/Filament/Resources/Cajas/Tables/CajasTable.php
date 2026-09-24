@@ -35,6 +35,10 @@ class CajasTable
                     ->label('Efectivo')
                     ->money('COP'),
 
+                TextColumn::make('total_nequi')
+                    ->label('Nequi')
+                    ->money('COP'),
+
                 TextColumn::make('total_transferencias')
                     ->label('Transferencias')
                     ->money('COP'),
@@ -81,7 +85,7 @@ class CajasTable
                     ->label('Cerrar caja')
                     ->icon('heroicon-o-lock-closed')
                     ->color('danger')
-                    ->visible(fn ($record) => $record->estado === 'abierta')
+                    ->visible(fn ($record) => auth()->user()?->can('cerrar', $record) ?? false)
                     ->form([
                         TextInput::make('saldo_real')
                             ->label('Dinero contado')

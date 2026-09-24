@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PerteneceASucursal;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class MovimientoInventario extends Model
 {
     use HasFactory;
+
+    // RNF07: ligado a una sucursal (la principal por defecto).
+    use PerteneceASucursal;
 
     protected $table = 'movimientos_inventario';
 
@@ -44,6 +48,7 @@ class MovimientoInventario extends Model
         'producto_id',
         'user_id',
         'tipo',
+        'fecha_movimiento',
         'cantidad',
         'stock_anterior',
         'stock_nuevo',
@@ -53,9 +58,18 @@ class MovimientoInventario extends Model
         'referencia_id',
     ];
 
+    protected static function booted(): void
+    {
+        // RF02/RF03: si no se indica la fecha de la transacción, es la actual.
+        static::creating(function (self $movimiento): void {
+            $movimiento->fecha_movimiento ??= now();
+        });
+    }
+
     protected function casts(): array
     {
         return [
+            'fecha_movimiento' => 'datetime',
             'cantidad' => 'integer',
             'stock_anterior' => 'integer',
             'stock_nuevo' => 'integer',
@@ -64,7 +78,8 @@ class MovimientoInventario extends Model
 
     public function producto(): BelongsTo
     {
-        return $this->belongsTo(Producto::class);
+        // Incluye eliminados lógicamente: el historial debe seguir mostrándolos.
+        return $this->belongsTo(Producto::class)->withTrashed();
     }
 
     public function user(): BelongsTo

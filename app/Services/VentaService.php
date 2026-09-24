@@ -34,6 +34,7 @@ class VentaService
     {
         return DB::transaction(function () use ($atributos, $detalles): Venta {
             $fechaVenta = Carbon::parse($atributos['fecha_venta'] ?? now());
+            $this->asegurarFechaNoFutura($fechaVenta);
             $this->asegurarCajaNoCerrada($fechaVenta);
             $metodoPago = $this->obtenerMetodoPagoActivo($atributos['metodo_pago_id'] ?? null);
             [$productos, $cantidades] = $this->bloquearYValidarProductos($detalles);
@@ -49,10 +50,11 @@ class VentaService
             $venta->detalles()->createMany($lineas);
 
             foreach ($cantidades as $productoId => $cantidad) {
-                $this->moverStock($productos->get($productoId), -$cantidad, $venta, 'Venta #'.$venta->id);
+                $this->moverStock($productos->get($productoId), -$cantidad, $venta, 'Venta #'.$venta->id, $fechaVenta);
             }
 
             AuditService::logVentaCreada($venta);
+            $this->auditarPreciosModificados($venta, $lineas);
 
             return $venta->load(['detalles.producto', 'metodoPago']);
         }, 3);
@@ -71,8 +73,10 @@ class VentaService
     {
         return DB::transaction(function () use ($venta, $atributos, $detalles): Venta {
             $venta = Venta::query()->with('detalles')->lockForUpdate()->findOrFail($venta->id);
+            $this->asegurarNoAnulada($venta);
             $fechaAnterior = Carbon::parse($venta->fecha_venta);
             $fechaNueva = Carbon::parse($atributos['fecha_venta'] ?? $venta->fecha_venta);
+            $this->asegurarFechaNoFutura($fechaNueva);
 
             // Bloqueo en orden cronológico para no cruzar el orden entre transacciones.
             $fechas = collect([$fechaAnterior, $fechaNueva])
@@ -115,8 +119,51 @@ class VentaService
 
             $venta->load(['detalles.producto', 'metodoPago']);
             AuditService::logVentaEditada($venta, $valoresAnteriores);
+            $this->auditarPreciosModificados($venta, $lineas);
 
             return $venta;
+        }, 3);
+    }
+
+    /**
+     * Anula una venta (devolución total): devuelve el stock de cada línea como
+     * movimiento "devolucion" (RF12), la excluye de caja y reportes y la
+     * audita. La venta no se borra. Solo con la caja de su fecha abierta.
+     */
+    public function anular(Venta $venta, string $motivo): Venta
+    {
+        $motivo = trim($motivo);
+        if ($motivo === '') {
+            throw ValidationException::withMessages(['motivo_anulacion' => 'Indique el motivo de la anulación.']);
+        }
+
+        return DB::transaction(function () use ($venta, $motivo): Venta {
+            $venta = Venta::query()->with('detalles')->lockForUpdate()->findOrFail($venta->id);
+            $this->asegurarNoAnulada($venta);
+            $this->asegurarCajaNoCerrada(Carbon::parse($venta->fecha_venta));
+
+            $cantidades = $this->agruparCantidades($venta->detalles->map->only(['producto_id', 'cantidad'])->all());
+            $productos = Producto::withTrashed()
+                ->whereIn('id', array_keys($cantidades))
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            $venta->forceFill([
+                'anulada_at' => now(),
+                'anulada_por' => Auth::id(),
+                'motivo_anulacion' => $motivo,
+            ])->saveQuietly();
+
+            foreach ($cantidades as $productoId => $cantidad) {
+                $this->moverStock($productos->get($productoId), $cantidad, $venta, 'Anulación venta #'.$venta->id.': '.$motivo);
+            }
+
+            app(CajaService::class)->recalcularCajaAbierta($venta->fecha_venta);
+            AuditService::log('venta_anulada', $venta, ['motivo' => $motivo, 'total' => (string) $venta->total]);
+
+            return $venta->load(['detalles.producto', 'metodoPago']);
         }, 3);
     }
 
@@ -163,7 +210,8 @@ class VentaService
         }
 
         $cantidades = $this->agruparCantidades($detalles);
-        $productos = Producto::query()
+        // withTrashed: una edición puede conservar un producto eliminado después de venderlo.
+        $productos = Producto::withTrashed()
             ->whereIn('id', array_unique(array_merge(array_keys($cantidades), array_keys($reservadas))))
             ->orderBy('id')
             ->lockForUpdate()
@@ -173,8 +221,9 @@ class VentaService
         foreach ($cantidades as $productoId => $cantidad) {
             $producto = $productos->get($productoId);
             $reservada = $reservadas[$productoId] ?? 0;
+            $vendible = $producto !== null && $producto->activo && ! $producto->trashed();
 
-            if ($producto === null || (! $producto->activo && $reservada === 0)) {
+            if ($producto === null || (! $vendible && $reservada === 0)) {
                 throw ValidationException::withMessages(['detalles' => 'Uno de los productos no existe o está inactivo.']);
             }
 
@@ -187,21 +236,24 @@ class VentaService
     }
 
     /**
-     * Calcula las líneas con el precio vigente en BD, nunca con el del navegador.
+     * Calcula las líneas. El precio base sale siempre de la BD; el precio
+     * aplicado puede diferir (RF04) pero lo valida el servidor. Subtotal y
+     * total nunca se toman del navegador.
      *
      * @param  array<int|string, array<string, mixed>>  $detalles
      * @param  Collection<int, Producto>  $productos
-     * @return array{0: array<int, array{producto_id: int, cantidad: int, precio_unitario: string, subtotal: string}>, 1: int}
+     * @return array{0: array<int, array{producto_id: int, cantidad: int, precio_unitario: string, precio_base: string, subtotal: string}>, 1: int}
      */
     private function calcularLineas(array $detalles, Collection $productos): array
     {
         $lineas = [];
         $totalCentavos = 0;
 
-        foreach ($detalles as $detalle) {
+        foreach ($detalles as $indice => $detalle) {
             $producto = $productos->get((int) $detalle['producto_id']);
             $cantidad = $this->normalizarCantidad($detalle['cantidad']);
-            $precioCentavos = $this->aCentavos($producto->precio_venta);
+            $baseCentavos = $this->aCentavos($producto->precio_venta);
+            $precioCentavos = $this->precioAplicado($detalle['precio_unitario'] ?? null, $baseCentavos, "detalles.{$indice}.precio_unitario");
             $subtotalCentavos = $precioCentavos * $cantidad;
             $totalCentavos += $subtotalCentavos;
 
@@ -209,6 +261,7 @@ class VentaService
                 'producto_id' => $producto->id,
                 'cantidad' => $cantidad,
                 'precio_unitario' => $this->desdeCentavos($precioCentavos),
+                'precio_base' => $this->desdeCentavos($baseCentavos),
                 'subtotal' => $this->desdeCentavos($subtotalCentavos),
             ];
         }
@@ -217,11 +270,72 @@ class VentaService
     }
 
     /**
+     * RF04: sin precio propuesto (o igual al base) se usa el precio base. Un
+     * precio distinto debe respetar el rango de RF01 configurado en
+     * config/mundococo.php; así un descuento o recargo nunca queda libre.
+     */
+    private function precioAplicado(mixed $propuesto, int $baseCentavos, string $campo): int
+    {
+        if ($propuesto === null || $propuesto === '') {
+            return $baseCentavos;
+        }
+
+        $precioCentavos = $this->aCentavos(is_float($propuesto) ? number_format($propuesto, 2, '.', '') : $propuesto, $campo);
+        if ($precioCentavos === $baseCentavos) {
+            return $baseCentavos;
+        }
+
+        $minimo = (int) config('mundococo.precio_venta_min') * 100;
+        $maximo = (int) config('mundococo.precio_venta_max') * 100;
+        if ($precioCentavos < $minimo || $precioCentavos > $maximo) {
+            throw ValidationException::withMessages([$campo => 'El precio de venta debe estar entre $'.number_format($minimo / 100, 0, ',', '.').' y $'.number_format($maximo / 100, 0, ',', '.').'.']);
+        }
+
+        return $precioCentavos;
+    }
+
+    /**
+     * RNF04: deja rastro de las líneas vendidas a un precio distinto del base.
+     *
+     * @param  array<int, array{producto_id: int, precio_unitario: string, precio_base: string}>  $lineas
+     */
+    private function auditarPreciosModificados(Venta $venta, array $lineas): void
+    {
+        $modificadas = array_values(array_filter($lineas, fn (array $linea): bool => $linea['precio_unitario'] !== $linea['precio_base']));
+        if ($modificadas === []) {
+            return;
+        }
+
+        AuditService::log('venta_precio_modificado', $venta, [
+            'lineas' => array_map(fn (array $linea): array => [
+                'producto_id' => $linea['producto_id'],
+                'precio_base' => $linea['precio_base'],
+                'precio_unitario' => $linea['precio_unitario'],
+            ], $modificadas),
+        ]);
+    }
+
+    private function asegurarNoAnulada(Venta $venta): void
+    {
+        if ($venta->anulada()) {
+            throw ValidationException::withMessages(['venta' => 'La venta está anulada y no admite cambios.']);
+        }
+    }
+
+    /** RF04: la fecha y hora de venta la indica el usuario, pero no puede ser futura. */
+    private function asegurarFechaNoFutura(Carbon $fechaVenta): void
+    {
+        if ($fechaVenta->isFuture()) {
+            throw ValidationException::withMessages(['fecha_venta' => 'La fecha de venta no puede ser futura.']);
+        }
+    }
+
+    /**
      * Aplica un cambio de stock ya validado (negativo = salida por venta,
      * positivo = devolución por edición) y lo traza en MovimientoInventario.
      * Query builder sin eventos: el ProductoObserver solo traza ajustes manuales.
      */
-    private function moverStock(Producto $producto, int $delta, Venta $venta, string $motivo): void
+    private function moverStock(Producto $producto, int $delta, Venta $venta, string $motivo, ?Carbon $fecha = null): void
     {
         $stockAnterior = $producto->stock_actual;
         Producto::query()->whereKey($producto->id)->increment('stock_actual', $delta);
@@ -231,6 +345,7 @@ class VentaService
             'producto_id' => $producto->id,
             'user_id' => Auth::id(),
             'tipo' => $delta < 0 ? MovimientoInventario::TIPO_VENTA : MovimientoInventario::TIPO_DEVOLUCION,
+            'fecha_movimiento' => $fecha ?? now(),
             'cantidad' => abs($delta),
             'stock_anterior' => $stockAnterior,
             'stock_nuevo' => $stockAnterior + $delta,

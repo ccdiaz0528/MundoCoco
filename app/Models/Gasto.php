@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PerteneceASucursal;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Gasto extends Model
 {
     use HasFactory;
+
+    // RNF07: ligado a una sucursal (la principal por defecto).
+    use PerteneceASucursal;
 
     protected $table = 'gastos';
 

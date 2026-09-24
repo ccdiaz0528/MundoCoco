@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Ventas\Schemas;
 
 use App\Models\Producto;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -28,7 +29,16 @@ class VentaForm
                             ->searchable()
                             ->preload(),
 
-                        // Solo informativo: VentaService recalcula el total con precios de BD.
+                        // RF04: fecha y hora de la venta (no futura; define la caja del día).
+                        DateTimePicker::make('fecha_venta')
+                            ->label('Fecha y hora de venta')
+                            ->required()
+                            ->default(now())
+                            ->maxDate(now()->endOfDay())
+                            ->seconds(false)
+                            ->native(false),
+
+                        // Solo informativo: VentaService recalcula el total en el servidor.
                         TextInput::make('total')
                             ->label('Total Venta')
                             ->numeric()
@@ -55,15 +65,10 @@ class VentaForm
                                 // Fila 1: selector de producto ancho completo
                                 Select::make('producto_id')
                                     ->label('Producto')
-                                    // Búsqueda en servidor: no carga todo el catálogo al abrir el formulario.
-                                    ->getSearchResultsUsing(fn (string $search): array => Producto::query()
-                                        ->where('activo', true)
-                                        ->where(fn ($query) => $query->where('nombre', 'like', "%{$search}%")->orWhere('codigo', 'like', "%{$search}%"))
-                                        ->orderBy('nombre')
-                                        ->limit(50)
-                                        ->get()
-                                        ->mapWithKeys(fn (Producto $producto): array => [$producto->id => "{$producto->codigo} · {$producto->nombre}"])
-                                        ->all())
+                                    // Opciones iniciales al abrir el selector (sin ellas el listado sale vacío
+                                    // hasta escribir); la búsqueda en servidor cubre el resto del catálogo.
+                                    ->options(fn (): array => self::opcionesProducto())
+                                    ->getSearchResultsUsing(fn (string $search): array => self::opcionesProducto($search))
                                     ->getOptionLabelUsing(fn ($value): ?string => ($producto = Producto::find($value)) ? "{$producto->codigo} · {$producto->nombre}" : null)
                                     ->required()
                                     ->searchable()
@@ -99,12 +104,22 @@ class VentaForm
                                         $set('../../total', $total);
                                     }),
 
+                                // RF04: el precio puede diferir del base (descuento/recargo).
+                                // VentaService lo valida contra el rango de RF01 y lo audita.
                                 TextInput::make('precio_unitario')
                                     ->label('Precio Unitario')
                                     ->numeric()
                                     ->prefix('$')
-                                    ->readOnly()
-                                    ->dehydrated(false),
+                                    ->required()
+                                    ->minValue(fn (): int => config('mundococo.precio_venta_min'))
+                                    ->maxValue(fn (): int => config('mundococo.precio_venta_max'))
+                                    ->helperText('Se sugiere el precio base; puede ajustarse.')
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                        $set('subtotal', floatval($state) * floatval($get('cantidad')));
+                                        $items = $get('../../detalles');
+                                        $set('../../total', collect($items)->sum(fn ($i) => floatval($i['subtotal'] ?? 0)));
+                                    }),
 
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
@@ -124,5 +139,24 @@ class VentaForm
                     ]),
 
             ]);
+    }
+
+    /**
+     * Productos activos para el selector de la venta, filtrados por nombre o código.
+     *
+     * @return array<int, string>
+     */
+    protected static function opcionesProducto(?string $search = null): array
+    {
+        return Producto::query()
+            ->where('activo', true)
+            ->when(filled($search), fn ($query) => $query->where(
+                fn ($query) => $query->where('nombre', 'like', "%{$search}%")->orWhere('codigo', 'like', "%{$search}%")
+            ))
+            ->orderBy('nombre')
+            ->limit(50)
+            ->get()
+            ->mapWithKeys(fn (Producto $producto): array => [$producto->id => "{$producto->codigo} · {$producto->nombre}"])
+            ->all();
     }
 }

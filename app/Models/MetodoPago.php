@@ -12,9 +12,14 @@ class MetodoPago extends Model
 
     public const EFECTIVO = 'Efectivo';
 
+    // RF04/RF11: Nequi se reporta por separado en la caja.
+    public const NEQUI = 'Nequi';
+
     public const TRANSFERENCIA = 'Transferencia';
 
     public const TARJETA = 'Tarjeta';
+
+    public const NOMBRES = [self::EFECTIVO, self::NEQUI, self::TRANSFERENCIA, self::TARJETA];
 
     protected $table = 'metodos_pago';
 

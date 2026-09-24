@@ -6,11 +6,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Producto extends Model
 {
     use HasFactory;
+
+    // RF01 eliminar: borrado lógico, conserva ventas y trazabilidad (RF12).
+    use SoftDeletes;
 
     protected $table = 'productos';
 
@@ -79,6 +83,17 @@ class Producto extends Model
     public function stockBajo(): bool
     {
         return $this->stock_actual <= $this->stock_minimo;
+    }
+
+    /**
+     * RF07 "Sugerencias de reorden": unidades para llegar al stock objetivo
+     * (stock mínimo × factor configurable en config/mundococo.php).
+     */
+    public function sugerenciaReorden(): int
+    {
+        $objetivo = (int) ceil($this->stock_minimo * (float) config('mundococo.factor_reorden', 2));
+
+        return max(0, $objetivo - (int) $this->stock_actual);
     }
 
     public function movimientos(): HasMany

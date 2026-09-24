@@ -61,8 +61,16 @@ class CajaForm
                             ->readOnly()
                             ->hint('Se calcula automáticamente'),
 
+                        TextInput::make('total_nequi')
+                            ->label('Total Nequi')
+                            ->numeric()
+                            ->prefix('$')
+                            ->default(0)
+                            ->readOnly()
+                            ->hint('Se calcula automáticamente'),
+
                         TextInput::make('total_transferencias')
-                            ->label('Total Transferencias (Nequi)')
+                            ->label('Total Transferencias bancarias')
                             ->numeric()
                             ->prefix('$')
                             ->default(0)
@@ -92,7 +100,7 @@ class CajaForm
                             ->default(0)
                             ->readOnly()
                             ->hint('Materia prima, servicios, etc.')
-                            ->color('danger'),
+                            ->hintColor('danger'),
 
                         TextInput::make('saldo_teorico')
                             ->label('Saldo Teórico (Base + Ventas - Gastos)')
@@ -115,6 +123,7 @@ class CajaForm
         $totales = app(CajaService::class)->totalesPorFecha($fecha);
 
         $set('total_efectivo', $totales['efectivo']);
+        $set('total_nequi', $totales['nequi']);
         $set('total_transferencias', $totales['transferencias']);
         $set('total_tarjetas', $totales['tarjetas']);
         $set('total_ventas', $totales['total']);

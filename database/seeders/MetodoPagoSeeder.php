@@ -7,16 +7,14 @@ use Illuminate\Database\Seeder;
 
 class MetodoPagoSeeder extends Seeder
 {
+    /**
+     * RF04/RF11 (Efectivo, Nequi) + anteproyecto (transferencias bancarias,
+     * tarjetas). Idempotente: se puede re-ejecutar en bases existentes.
+     */
     public function run(): void
     {
-        $metodos = [
-            ['nombre' => 'Efectivo'],
-            ['nombre' => 'Transferencia'],
-            ['nombre' => 'Tarjeta'],
-        ];
-
-        foreach ($metodos as $metodo) {
-            MetodoPago::create($metodo);
+        foreach (MetodoPago::NOMBRES as $nombre) {
+            MetodoPago::firstOrCreate(['nombre' => $nombre], ['activo' => true]);
         }
     }
 }

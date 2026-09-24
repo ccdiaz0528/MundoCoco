@@ -17,6 +17,7 @@ class VentaDetalle extends Model
         'producto_id',
         'cantidad',
         'precio_unitario',
+        'precio_base',
         'subtotal',
     ];
 
@@ -25,6 +26,7 @@ class VentaDetalle extends Model
         return [
             'cantidad' => 'integer',
             'precio_unitario' => 'decimal:2',
+            'precio_base' => 'decimal:2',
             'subtotal' => 'decimal:2',
         ];
     }
@@ -38,6 +40,7 @@ class VentaDetalle extends Model
     // Un detalle pertenece a un producto
     public function producto(): BelongsTo
     {
-        return $this->belongsTo(Producto::class);
+        // Incluye eliminados lógicamente: el historial debe seguir mostrándolos.
+        return $this->belongsTo(Producto::class)->withTrashed();
     }
 }

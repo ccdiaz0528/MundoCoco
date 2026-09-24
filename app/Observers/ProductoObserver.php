@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\MovimientoInventario;
 use App\Models\Producto;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Auth;
 
 class ProductoObserver
@@ -71,5 +72,8 @@ class ProductoObserver
             'stock_nuevo' => $ajuste['nuevo'],
             'motivo' => 'Ajuste manual de stock',
         ]);
+
+        // RNF04: auditoría de cambios de inventario.
+        AuditService::logStockAjuste($producto, $ajuste['anterior'], $ajuste['nuevo'], $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO);
     }
 }
