@@ -15,13 +15,14 @@ composer install
 Copy-Item .env.example .env
 php artisan key:generate
 # Configura DB_CONNECTION y las credenciales de la base de datos en .env
+# Define también ADMIN_NAME, ADMIN_EMAIL y ADMIN_PASSWORD (usuario inicial con rol Admin)
 php artisan migrate --seed
 npm ci
 npm run build
 php artisan serve
 ```
 
-El panel está disponible en `/admin`. Crea el usuario administrador por el mecanismo de tu entorno antes de publicar la aplicación.
+El panel está disponible en `/admin`. El usuario administrador se crea con `AdminUserSeeder` a partir de `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` (sin esas variables no se crea nadie, por seguridad).
 
 ## Reglas operativas
 
@@ -50,3 +51,5 @@ Cada cambio se valida en GitHub Actions con estilo, pruebas y compilación de fr
 - `app/Policies/`: autorización por rol.
 - `database/migrations/`: estructura e índices de base de datos.
 - `tests/`: pruebas de reglas de negocio y flujos.
+- `docs/`: documentación técnica (`MANUAL_USUARIO.md`, `IMPLEMENTACION.md`, `TESTING_REPORT.md`, `CUMPLIMIENTO_ANTEPROYECTO.md`).
+- `DOCS DE PROYECTO/`: entregables académicos (anteproyecto, RF/RNF, presentaciones).

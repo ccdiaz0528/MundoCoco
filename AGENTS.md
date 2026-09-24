@@ -1,7 +1,7 @@
 # AGENTS.md - MundoCoco
 
 ## Stack (verify in `composer.json`/`package.json`, not docs)
-- Laravel `^13.0` + Filament `^5.0` + PHP `^8.3` + Pest `^4.5` (`pest-plugin-laravel`). `.agent.md` stating Laravel 11 is stale.
+- Laravel `^13.0` + Filament `^5.0` + PHP `^8.3` + Pest `^4.5` (`pest-plugin-laravel`).
 - Node 20+, Vite 8 + `@tailwindcss/vite` 4, `laravel-vite-plugin` 3. Entrypoints `resources/css/app.css`, `resources/js/app.js` (`vite.config.js:8`).
 - DB: MySQL default (`.env.example:23`), tests force `sqlite :memory:` (`phpunit.xml:26-27`). No external DB needed for tests.
 
@@ -11,6 +11,7 @@ composer install
 Copy-Item .env.example .env
 php artisan key:generate
 # edit .env DB_CONNECTION/credentials (mysql) or use sqlite
+# also set ADMIN_NAME/ADMIN_EMAIL/ADMIN_PASSWORD (initial Admin user via AdminUserSeeder)
 php artisan migrate --seed
 npm ci
 npm run build
@@ -39,10 +40,11 @@ php artisan test --filter=CajasFlowTest
 - Pest auto-applies `RefreshDatabase` to `Feature`+`Unit` (`tests/Pest.php:17-19`). No manual trait needed there; add it explicitly outside those dirs.
 
 ## Architecture
-- `app/Services/`: transactional rules - `VentaService::crear/prepararDetalles/reconciliarEdicion/productosBajoMinimo`, `CajaService::abrir/cerrar/recalcularCajaAbierta/totalesPorFecha`, `InventarioService::registrarInicial/adicionarStock/retirarStock`, `ReporteService`, `ReporteExportService` (export CSV/PDF/XLSX vía `reportes.export`), `AuditService`. Keep business logic here, not in Filament Resources or Models.
+- `app/Services/`: transactional rules - `VentaService::crear/actualizar/productosBajoMinimo` (único camino: `CreateVenta`/`EditVenta` delegan vía `handleRecordCreation`/`handleRecordUpdate`; el repeater `detalles` NO usa `->relationship()`; panel con `->databaseTransactions()`), `CajaService::abrir/cerrar/recalcularCajaAbierta/totalesPorFecha`, `InventarioService::registrarInicial/adicionarStock/retirarStock`, `ReporteService`, `ReporteExportService` (export CSV/PDF/XLSX vía `reportes.export`), `AuditService`. Keep business logic here, not in Filament Resources or Models.
 - `app/Filament/Resources/*/{Schemas,Tables,Pages}/`: Filament 5 structure (plural dirs: `Ventas`, `Cajas`, `Productos`, `Gastos`, `Movimientos`, ...). New model needs `Resource.php` + `Schemas/*Form.php` + `Tables/*Table.php` + `Pages/List|Create|Edit.php`. Plus `Filament/Pages/Reportes.php` and `Filament/Widgets/StatsOverview.php`.
 - `app/Models/`: `Venta`, `Caja`, `Producto`, `Categoria`, `MetodoPago`, `VentaDetalle`, `MovimientoInventario`, `Gasto`, `AuditLog` - all `decimal:2` casts return strings (cast to float/string explicitly in tests). `Producto.codigo` is unique, auto-generated in `booted()` when empty.
-- `app/Observers/`: `VentaObserver` / `GastoObserver` / `ProductoObserver` recalculate open `Caja` on sale/gasto changes. Registered in `app/Providers/AppServiceProvider.php:28-30`.
+- `app/Observers/`: `VentaObserver` / `GastoObserver` / `ProductoObserver` recalculate open `Caja` on sale/gasto changes. Registered in `app/Providers/AppServiceProvider.php:28-30`. **Gotcha**: Laravel resolves a new observer instance per event (`Class@event`), so `updating`→`updated` state must be `static` (with unset-on-read), never instance props.
+- Money math lives in `App\Support\Dinero` (`aCentavos`/`desdeCentavos`); services must mutate stock via query-builder (`whereKey()->increment/decrement`, no model events) so `ProductoObserver` only traces manual panel edits.
 - `app/Policies/` + `althinect/filament-spatie-roles-permissions` (`composer.json:10`): roles `Admin`/`Operador`/`Consultor` (read-only). Check `database/seeders/RoleSeeder.php` (29 granular permissions).
 - `database/migrations/`: includes `2026_09_09_000001..000004` for `movimientos_inventario`, `gastos`, `add_gastos_to_caja`, `audit_logs`, plus `2026_09_08_000000_add_operational_indexes.php`.
 - `routes/web.php:9,12,15`: `/privacidad` view + `/login`→`/admin/login` + `/reportes/export/{tipo}/{csv,pdf,xlsx}` via `ReporteExportService` (no controller); `routes/console.php:12` schedules real `backup:database` (SQL dump to `storage/app/backups`, 30d retention) + audit cleanup >365d; `config/session.php` (120 min lifetime).
@@ -62,8 +64,8 @@ php artisan test --filter=CajasFlowTest
 - RNF que afectan código: interfaz y comentarios en español (RNF02); operaciones <3s (RNF01); bcrypt + sesión 2h + auditoría + backup diario (RNF04); 80% cobertura en funciones críticas (RNF10).
 
 ## Testing Notes
-- Pest + `RefreshDatabase` + `sqlite :memory:`. Factories for all models exist (`database/factories/`). Do not assert hard counts without running suite - see `TESTING_REPORT.md:3`.
-- Key invariants to preserve (`TESTING_REPORT.md:21-27`): no negative stock even with duplicate product lines; client cannot set price/subtotal/total; closed-date sales rejected; caja uses only `fecha_venta`; `diferencia` only from counted cash at close.
+- Pest + `RefreshDatabase` + `sqlite :memory:`. Factories for all models exist (`database/factories/`). Do not assert hard counts without running suite - see `docs/TESTING_REPORT.md:3`.
+- Key invariants to preserve (`docs/TESTING_REPORT.md:21-27`): no negative stock even with duplicate product lines; client cannot set price/subtotal/total; closed-date sales rejected; caja uses only `fecha_venta`; `diferencia` only from counted cash at close.
 
 ## References
-- `README.md` (install + operational rules), `IMPLEMENTACION.md` (phase plan/gaps), `TESTING_REPORT.md` (invariants), `CUMPLIMIENTO_ANTEPROYECTO.md` (§10 declared doc→code deviations - read before changing business rules), `quality.yml` (CI contract). Requisitos autoritativos: `DOCS DE PROYECTO/RF y RNF.docx` (12 RF + 10 RNF) y `DOCS DE PROYECTO/Solución Sistema de Inventario y Facturación Mundo Coco.docx` (problema/objetivos). Prefer executable config (`composer.json` scripts, `phpunit.xml`, `vite.config.js`) when docs conflict.
+- `README.md` (install + operational rules), `docs/IMPLEMENTACION.md` (phase plan/gaps), `docs/TESTING_REPORT.md` (invariants), `docs/CUMPLIMIENTO_ANTEPROYECTO.md` (§10 declared doc→code deviations - read before changing business rules), `quality.yml` (CI contract). Requisitos autoritativos: `DOCS DE PROYECTO/RF y RNF.docx` (12 RF + 10 RNF) y `DOCS DE PROYECTO/Solución Sistema de Inventario y Facturación Mundo Coco.docx` (problema/objetivos). Prefer executable config (`composer.json` scripts, `phpunit.xml`, `vite.config.js`) when docs conflict.

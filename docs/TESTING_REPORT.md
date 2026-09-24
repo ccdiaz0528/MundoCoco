@@ -1,11 +1,11 @@
 # Estrategia de pruebas - MundoCoco
 
-La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php:17`, `phpunit.xml:26`). **103 tests** (239 assertions), 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php:17`, `phpunit.xml:26`). **112 tests** (259 assertions), 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
 ## Estado Actual 2026-09-09
 
 ```
-PASS 103 tests (239 assertions)
+PASS 112 tests (259 assertions)
 vendor/bin/pint --test : verde (PSR-12)
 ```
 
@@ -85,6 +85,13 @@ CI: PHP 8.3 + Node 20, `composer install` -> `pint --test` -> `php artisan test`
 - `tests/Feature/ReporteExportTest.php` (5): RF08/RF09 export CSV/PDF/XLSX (magic bytes `%PDF`/`PK`), 404 y auth
 - `tests/Feature/BackupDatabaseTest.php` (2): RNF04 volcado SQL real + purga por retención
 - `tests/Feature/RendimientoTest.php` (2): RNF01 200 productos, reportes <3s
+- `tests/Feature/AdminUserSeederTest.php` (3): creación con rol, omisión sin credenciales, idempotencia
+
+## Endurecimiento 2026-09-09 (Fase 9)
+
+- `tests/Unit/Observers/ProductoObserverTest.php` (3): ajuste manual +/− trazado, sin movimiento al editar otros campos
+- `tests/Unit/Observers/GastoObserverTest.php` (2): recalcula al crear y al cambiar fecha sin errores
+- Cobertura nueva en `ReportesServiceTest.php`: ventas por categoría agregadas en SQL
 
 ## Cobertura RNF10 (nota honesta)
 

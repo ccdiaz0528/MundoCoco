@@ -21,7 +21,7 @@
 | 7 | Pruebas funcionales completas + calidad | ✅ | 2026-09-09 | 84 tests, `vendor/bin/pint --test` verde, `npm run build` verde |
 | 8 | Cierre de cumplimiento estricto RF/RNF (auditoría externa) | ✅ | 2026-09-09 | 103 tests, backup real, export PDF/XLSX, código producto, Fase 8 abajo |
 
-**Tests finales:** 103 passed (239 assertions) | **Cobertura RF/RNF:** 12 RF + paths críticos (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §10 desviaciones declaradas y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 6 desviaciones justificadas
+**Tests finales:** 112 passed (259 assertions) | **Cobertura RF/RNF:** 12 RF + paths críticos (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §10 desviaciones declaradas y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 6 desviaciones justificadas
 
 ---
 
@@ -181,6 +181,18 @@ Auditoría requisito-por-requisito contra `DOCS DE PROYECTO/RF y RNF.docx`. Hall
 - [x] RNF02/RNF08: `APP_LOCALE=es` en `.env.example`, rama PostgreSQL en `ReporteService.php:139`
 - [x] RNF01: `RendimientoTest.php` (200 productos, reportes <3s); RNF10: nota honesta de cobertura en `TESTING_REPORT.md` + §10 de desviaciones en `CUMPLIMIENTO_ANTEPROYECTO.md`
 - [x] Tests 103/103 (239 assertions), `vendor/bin/pint --test` verde
+
+### FASE 9 - Endurecimiento (errores, redundancia, optimización) ✅ 2026-09-09
+Auditoría interna de buenas prácticas. Hallazgos críticos corregidos:
+- [x] `ProductoObserver` contaminaba el UPDATE con atributos `_movimiento_*` (SQL error al editar stock en panel) → estado en el observer, no en el modelo
+- [x] Los 3 observers guardaban estado `updating→updated` en props de instancia, pero Laravel resuelve una instancia por evento (`Class@event`) → estado `static` con unset-on-read (en `VentaObserver` la caja anterior nunca se recalculaba; en `GastoObserver` llegaba `null` a `recalcularCajaAbierta`)
+- [x] `increment()/decrement()` de modelo SÍ disparan eventos → los servicios duplicaban movimientos en producción → mutación solo vía query-builder (`ProductoObserver` traza únicamente ediciones manuales)
+- [x] `descontarInventario` sin transacción ni locks (sobrevVenta concurrente) → `DB::transaction + lockForUpdate`
+- [x] `BackupDatabase` entrecomillaba identificadores MySQL con comillas dobles (respaldo inválido) → entrecomillado por driver
+- [x] Redundancia: `aCentavos/desdeCentavos` duplicados → trait `App\Support\Dinero`; `valorizacionInventario` duplicada → `InventarioService` delega en `ReporteService`
+- [x] Optimización: `ventasPorCategoria` agregaba en PHP → agregación SQL; select de productos en `VentaForm` cargaba todo el catálogo → `relationship()` con búsqueda en servidor
+- [x] `APP_KEY` vacía en `.env` (enmascarada por caché de config) + clave fija de tests en `phpunit.xml`; `GastoPolicy::update` deduplicada; guard null-safe en `CreateVenta`
+- [x] Tests 112/112 (259 assertions), `vendor/bin/pint --test` verde
 
 ---
 
