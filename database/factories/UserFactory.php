@@ -28,9 +28,18 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
+            'politica_aceptada_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /** Ley 1581: usuario que aún no aceptó la política de tratamiento de datos. */
+    public function sinConsentimiento(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'politica_aceptada_at' => null,
+        ]);
     }
 
     /**

@@ -2,64 +2,46 @@
 
 namespace App\Policies;
 
-use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
+use Spatie\Permission\Models\Role;
 
 class RolePolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('ver roles');
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Role $role): bool
     {
-        return $user->hasRole(['Admin']);
+        return $this->viewAny($user);
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('gestionar roles');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Role $role): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('gestionar roles');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
+    /** Los tres roles de RF10 no se pueden borrar. */
     public function delete(User $user, Role $role): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('gestionar roles')
+            && ! in_array($role->name, [RoleSeeder::ADMIN, RoleSeeder::OPERARIO, RoleSeeder::CONSULTOR], true);
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Role $role): bool
     {
-        return $user->hasRole(['Admin']);
+        return false;
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Role $role): bool
     {
-        return $user->hasRole(['Admin']);
+        return false;
     }
 }

@@ -39,4 +39,21 @@ describe('AdminUserSeeder', function () {
 
         expect(User::where('email', 'admin@mundococo.test')->count())->toBe(1);
     });
+
+    it('no pisa la contraseña ni otros roles de un administrador existente', function () {
+        config()->set('mundococo.admin_email', 'admin@mundococo.test');
+        config()->set('mundococo.admin_password', 'Clave-Segura-123');
+        $this->seed(AdminUserSeeder::class);
+
+        $usuario = User::where('email', 'admin@mundococo.test')->first();
+        $usuario->update(['password' => Hash::make('Cambiada-Desde-Panel')]);
+        $usuario->assignRole('Operario');
+
+        $this->seed(AdminUserSeeder::class);
+
+        $usuario->refresh();
+        expect(Hash::check('Cambiada-Desde-Panel', $usuario->password))->toBeTrue()
+            ->and($usuario->hasRole(['Admin']))->toBeTrue()
+            ->and($usuario->hasRole('Operario'))->toBeTrue();
+    });
 });

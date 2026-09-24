@@ -16,7 +16,7 @@ class RoleForm
                     ->label('Nombre del rol')
                     ->required()
                     ->maxLength(255)
-                    ->placeholder('Ej.: Administrador, Operador, Consultor'),
+                    ->placeholder('Ej.: Admin, Operario, Consultor'),
                 TextInput::make('guard_name')
                     ->label('Guardia')
                     ->default('web')

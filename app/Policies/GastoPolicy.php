@@ -6,11 +6,12 @@ use App\Models\Caja;
 use App\Models\Gasto;
 use App\Models\User;
 
+/** RF11 + RF10: gastos del día a cargo del Administrador; bloqueados con caja cerrada. */
 class GastoPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
+        return $user->can('ver gastos');
     }
 
     public function view(User $user, Gasto $gasto): bool
@@ -20,18 +21,17 @@ class GastoPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Operador']);
+        return $user->can('crear gastos');
     }
 
     public function update(User $user, Gasto $gasto): bool
     {
-        // No editar gastos de cajas cerradas
-        return $user->hasRole(['Admin', 'Operador']) && ! $this->esDeCajaCerrada($gasto);
+        return $user->can('editar gastos') && ! $this->esDeCajaCerrada($gasto);
     }
 
     public function delete(User $user, Gasto $gasto): bool
     {
-        return $user->hasRole(['Admin']) && ! $this->esDeCajaCerrada($gasto);
+        return $user->can('eliminar gastos') && ! $this->esDeCajaCerrada($gasto);
     }
 
     private function esDeCajaCerrada(Gasto $gasto): bool

@@ -5,61 +5,43 @@ namespace App\Policies;
 use App\Models\Producto;
 use App\Models\User;
 
+/** RF01 + RF10: la gestión del catálogo es del Administrador; el Operario solo consulta. */
 class ProductoPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
+        return $user->can('ver productos');
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin', 'Operador', 'Consultor']);
+        return $this->viewAny($user);
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('crear productos');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin', 'Operador']);
+        return $user->can('editar productos');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
+    /** RF01 eliminar: borrado lógico (SoftDeletes) que conserva ventas y trazabilidad RF12. */
     public function delete(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin']) && ! $producto->ventaDetalles()->exists();
+        return $user->can('eliminar productos');
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('eliminar productos');
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
+    /** Nunca se borra físicamente: rompería ventas y movimientos históricos. */
     public function forceDelete(User $user, Producto $producto): bool
     {
-        return $user->hasRole(['Admin']);
+        return false;
     }
 }

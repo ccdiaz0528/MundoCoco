@@ -5,16 +5,17 @@ namespace App\Policies;
 use App\Models\AuditLog;
 use App\Models\User;
 
+/** RNF04: la auditoría es de solo lectura. */
 class AuditLogPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(['Admin']);
+        return $user->can('ver auditoria');
     }
 
     public function view(User $user, AuditLog $log): bool
     {
-        return $user->hasRole(['Admin']);
+        return $this->viewAny($user);
     }
 
     public function create(User $user): bool
