@@ -48,9 +48,12 @@ class BackupDatabase extends Command
         foreach ($this->tablas($pdo, $driver) as $tabla) {
             $lineas[] = "-- Tabla: {$tabla}";
             $lineas[] = $this->crearTabla($pdo, $driver, $tabla).';';
-            foreach ($this->filas($pdo, $driver, $tabla) as $fila) {
+            // Identificadores entre comillas dobles son literales en MySQL
+            // (sin ANSI_QUOTES); cada driver usa su propio entrecomillado.
+            $identificador = $driver === 'mysql' ? "`{$tabla}`" : "\"{$tabla}\"";
+            foreach ($this->filas($pdo, $tabla) as $fila) {
                 $valores = array_map(fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), array_values($fila));
-                $lineas[] = "INSERT INTO \"{$tabla}\" VALUES (".implode(', ', $valores).');';
+                $lineas[] = "INSERT INTO {$identificador} VALUES (".implode(', ', $valores).');';
             }
             $lineas[] = '';
         }
@@ -78,8 +81,9 @@ class BackupDatabase extends Command
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function filas(\PDO $pdo, string $driver, string $tabla): array
+    private function filas(\PDO $pdo, string $tabla): array
     {
+        $driver = DB::connection()->getDriverName();
         $comilla = $driver === 'mysql' ? '`' : '"';
 
         return $pdo->query("SELECT * FROM {$comilla}{$tabla}{$comilla}")->fetchAll(\PDO::FETCH_ASSOC);

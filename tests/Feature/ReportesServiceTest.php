@@ -116,4 +116,21 @@ describe('Reportes RF08 RF09', function () {
         expect($dentro->count())->toBeGreaterThanOrEqual(1)
             ->and($fuera->count())->toBe(0);
     });
+
+    it('RF09 ventas por categoría agregadas', function () {
+        $cat = Categoria::factory()->create(['nombre' => 'Helados']);
+        $producto = Producto::factory()->create(['categoria_id' => $cat->id, 'precio_venta' => 100]);
+        $met = MetodoPago::where('nombre', 'Efectivo')->first();
+
+        $venta = Venta::factory()->create(['metodo_pago_id' => $met->id, 'total' => 300, 'fecha_venta' => now()]);
+        VentaDetalle::factory()->create(['venta_id' => $venta->id, 'producto_id' => $producto->id, 'cantidad' => 3, 'precio_unitario' => 100, 'subtotal' => 300]);
+
+        $res = app(ReporteService::class)->ventasPorCategoria(now()->subDay(), now()->addDay());
+
+        expect($res->count())->toBe(1)
+            ->and($res->first()['categoria'])->toBe('Helados')
+            ->and((int) $res->first()['cantidad_vendida'])->toBe(3)
+            ->and((float) $res->first()['ingreso_total'])->toBe(300.0)
+            ->and((int) $res->first()['transacciones'])->toBe(1);
+    });
 });

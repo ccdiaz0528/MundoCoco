@@ -8,8 +8,13 @@ use Illuminate\Support\Carbon;
 
 class VentaObserver
 {
-    /** @var array<int, Carbon> */
-    private array $fechasOriginales = [];
+    /**
+     * Fechas originales por venta. Estático porque Laravel resuelve una
+     * instancia distinta del observer por cada evento (Class@event).
+     *
+     * @var array<int, Carbon>
+     */
+    private static array $fechasOriginales = [];
 
     public function created(Venta $venta): void
     {
@@ -18,15 +23,15 @@ class VentaObserver
 
     public function updating(Venta $venta): void
     {
-        $this->fechasOriginales[$venta->id] = Carbon::parse($venta->getOriginal('fecha_venta'));
+        self::$fechasOriginales[$venta->id] = Carbon::parse($venta->getOriginal('fecha_venta'));
     }
 
     public function updated(Venta $venta): void
     {
         $cajaService = app(CajaService::class);
-        $cajaService->recalcularCajaAbierta($this->fechasOriginales[$venta->id] ?? $venta->fecha_venta);
+        $cajaService->recalcularCajaAbierta(self::$fechasOriginales[$venta->id] ?? $venta->fecha_venta);
         $cajaService->recalcularCajaAbierta($venta->fecha_venta);
-        unset($this->fechasOriginales[$venta->id]);
+        unset(self::$fechasOriginales[$venta->id]);
     }
 
     public function deleted(Venta $venta): void

@@ -8,7 +8,14 @@ use Illuminate\Support\Carbon;
 
 class GastoObserver
 {
-    private ?Carbon $fechaOriginal = null;
+    /**
+     * Fechas originales por gasto. Estático porque Laravel resuelve una
+     * instancia distinta del observer por cada evento (Class@event); con
+     * estado de instancia la fecha original siempre llegaba null a updated.
+     *
+     * @var array<int, Carbon>
+     */
+    private static array $fechasOriginales = [];
 
     public function creating(Gasto $gasto): void
     {
@@ -22,15 +29,15 @@ class GastoObserver
 
     public function updating(Gasto $gasto): void
     {
-        $this->fechaOriginal = Carbon::parse($gasto->getOriginal('fecha'));
+        self::$fechasOriginales[$gasto->id] = Carbon::parse($gasto->getOriginal('fecha'));
     }
 
     public function updated(Gasto $gasto): void
     {
         $svc = app(CajaService::class);
-        $svc->recalcularCajaAbierta($this->fechaOriginal);
+        $svc->recalcularCajaAbierta(self::$fechasOriginales[$gasto->id] ?? $gasto->fecha);
         $svc->recalcularCajaAbierta($gasto->fecha);
-        $this->fechaOriginal = null;
+        unset(self::$fechasOriginales[$gasto->id]);
     }
 
     public function deleted(Gasto $gasto): void

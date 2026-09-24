@@ -7,20 +7,28 @@ use App\Models\MetodoPago;
 use App\Models\MovimientoInventario;
 use App\Models\Producto;
 use App\Models\Venta;
+use App\Support\Dinero;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Único punto de entrada para registrar y editar ventas. El panel Filament
+ * delega aquí (CreateVenta/EditVenta), de modo que la lógica probada en los
+ * tests es exactamente la que corre en producción.
+ */
 class VentaService
 {
+    use Dinero;
+
     /**
      * Registra una venta usando el precio vigente del producto y descuenta el
      * inventario dentro de la misma transacción.
      *
      * @param  array<string, mixed>  $atributos
-     * @param  array<int, array<string, mixed>>  $detalles
+     * @param  array<int|string, array<string, mixed>>  $detalles
      */
     public function crear(array $atributos, array $detalles): Venta
     {
@@ -29,24 +37,7 @@ class VentaService
             $this->asegurarCajaNoCerrada($fechaVenta);
             $metodoPago = $this->obtenerMetodoPagoActivo($atributos['metodo_pago_id'] ?? null);
             [$productos, $cantidades] = $this->bloquearYValidarProductos($detalles);
-
-            $totalCentavos = 0;
-            $lineas = [];
-
-            foreach ($detalles as $detalle) {
-                $producto = $productos->get((int) $detalle['producto_id']);
-                $cantidad = (int) $detalle['cantidad'];
-                $precioCentavos = $this->aCentavos($producto->precio_venta);
-                $subtotalCentavos = $precioCentavos * $cantidad;
-                $totalCentavos += $subtotalCentavos;
-
-                $lineas[] = [
-                    'producto_id' => $producto->id,
-                    'cantidad' => $cantidad,
-                    'precio_unitario' => $this->desdeCentavos($precioCentavos),
-                    'subtotal' => $this->desdeCentavos($subtotalCentavos),
-                ];
-            }
+            [$lineas, $totalCentavos] = $this->calcularLineas($detalles, $productos);
 
             $venta = Venta::query()->create([
                 'metodo_pago_id' => $metodoPago->id,
@@ -58,23 +49,7 @@ class VentaService
             $venta->detalles()->createMany($lineas);
 
             foreach ($cantidades as $productoId => $cantidad) {
-                $producto = $productos->get($productoId);
-                $stockAnterior = $producto->stock_actual;
-                $producto->decrement('stock_actual', $cantidad);
-                $stockNuevo = $stockAnterior - $cantidad;
-
-                MovimientoInventario::create([
-                    'producto_id' => $productoId,
-                    'user_id' => Auth::id(),
-                    'tipo' => MovimientoInventario::TIPO_VENTA,
-                    'cantidad' => $cantidad,
-                    'stock_anterior' => $stockAnterior,
-                    'stock_nuevo' => $stockNuevo,
-                    'motivo' => 'Venta #'.$venta->id,
-                    'observaciones' => $venta->observaciones,
-                    'referencia_type' => Venta::class,
-                    'referencia_id' => $venta->id,
-                ]);
+                $this->moverStock($productos->get($productoId), -$cantidad, $venta, 'Venta #'.$venta->id);
             }
 
             AuditService::logVentaCreada($venta);
@@ -83,66 +58,66 @@ class VentaService
         }, 3);
     }
 
-    public function asegurarFechaVentaOperable(Carbon|string $fechaVenta): void
-    {
-        $this->asegurarCajaNoCerrada(Carbon::parse($fechaVenta));
-    }
-
     /**
-     * Comprueba stock con bloqueos de fila y devuelve los importes confiables
-     * que deben persistirse para los detalles enviados por Filament.
+     * Edita una venta de forma atómica: valida el nuevo stock contando lo que
+     * la venta ya tenía reservado, reemplaza los detalles con precios del
+     * servidor y traza la diferencia neta por producto (RF12): salida si se
+     * vendió más, devolución si se vendió menos.
      *
-     * @param  array<int, array<string, mixed>>  $detalles
-     * @return array{detalles: array<int, array{producto_id: int, cantidad: int, precio_unitario: string, subtotal: string}>, cantidades: array<int, int>, total: string}
+     * @param  array<string, mixed>  $atributos
+     * @param  array<int|string, array<string, mixed>>  $detalles
      */
-    public function prepararDetalles(array $detalles): array
+    public function actualizar(Venta $venta, array $atributos, array $detalles): Venta
     {
-        [$productos, $cantidades] = $this->bloquearYValidarProductos($detalles);
-        $lineas = [];
-        $totalCentavos = 0;
+        return DB::transaction(function () use ($venta, $atributos, $detalles): Venta {
+            $venta = Venta::query()->with('detalles')->lockForUpdate()->findOrFail($venta->id);
+            $fechaAnterior = Carbon::parse($venta->fecha_venta);
+            $fechaNueva = Carbon::parse($atributos['fecha_venta'] ?? $venta->fecha_venta);
 
-        foreach ($detalles as $detalle) {
-            $producto = $productos->get((int) $detalle['producto_id']);
-            $cantidad = (int) $detalle['cantidad'];
-            $precioCentavos = $this->aCentavos($producto->precio_venta);
-            $subtotalCentavos = $precioCentavos * $cantidad;
-            $totalCentavos += $subtotalCentavos;
-
-            $lineas[] = [
-                'producto_id' => $producto->id,
-                'cantidad' => $cantidad,
-                'precio_unitario' => $this->desdeCentavos($precioCentavos),
-                'subtotal' => $this->desdeCentavos($subtotalCentavos),
-            ];
-        }
-
-        return [
-            'detalles' => $lineas,
-            'cantidades' => $cantidades,
-            'total' => $this->desdeCentavos($totalCentavos),
-        ];
-    }
-
-    /** @param array<int, int> $cantidades */
-    public function descontarInventario(array $cantidades): void
-    {
-        foreach ($cantidades as $productoId => $cantidad) {
-            $producto = Producto::query()->whereKey($productoId)->first();
-            if (! $producto) {
-                continue;
+            // Bloqueo en orden cronológico para no cruzar el orden entre transacciones.
+            $fechas = collect([$fechaAnterior, $fechaNueva])
+                ->sort()
+                ->unique(fn (Carbon $fecha) => $fecha->toDateString());
+            foreach ($fechas as $fecha) {
+                $this->asegurarCajaNoCerrada($fecha);
             }
-            $anterior = $producto->stock_actual;
-            Producto::query()->whereKey($productoId)->decrement('stock_actual', $cantidad);
-            MovimientoInventario::create([
-                'producto_id' => $productoId,
-                'user_id' => Auth::id(),
-                'tipo' => MovimientoInventario::TIPO_VENTA,
-                'cantidad' => $cantidad,
-                'stock_anterior' => $anterior,
-                'stock_nuevo' => $anterior - $cantidad,
-                'motivo' => 'Venta vía Filament',
-            ]);
-        }
+
+            $metodoPago = $this->obtenerMetodoPagoActivo($atributos['metodo_pago_id'] ?? $venta->metodo_pago_id);
+            $anteriores = $this->agruparCantidades($venta->detalles->map->only(['producto_id', 'cantidad'])->all());
+            $valoresAnteriores = $venta->only(['metodo_pago_id', 'total', 'observaciones', 'fecha_venta'])
+                + ['detalles' => $venta->detalles->map->only(['producto_id', 'cantidad', 'precio_unitario', 'subtotal'])->all()];
+
+            [$productos, $nuevas] = $this->bloquearYValidarProductos($detalles, $anteriores);
+            [$lineas, $totalCentavos] = $this->calcularLineas($detalles, $productos);
+
+            $venta->detalles()->delete();
+            $venta->detalles()->createMany($lineas);
+            // Sin eventos: la caja se recalcula explícitamente abajo.
+            $venta->fill([
+                'metodo_pago_id' => $metodoPago->id,
+                'total' => $this->desdeCentavos($totalCentavos),
+                'observaciones' => array_key_exists('observaciones', $atributos) ? $atributos['observaciones'] : $venta->observaciones,
+                'fecha_venta' => $fechaNueva,
+            ])->saveQuietly();
+
+            foreach ($productos as $productoId => $producto) {
+                $neto = ($anteriores[$productoId] ?? 0) - ($nuevas[$productoId] ?? 0);
+                if ($neto !== 0) {
+                    $this->moverStock($producto, $neto, $venta, 'Edición venta #'.$venta->id);
+                }
+            }
+
+            $cajaService = app(CajaService::class);
+            $cajaService->recalcularCajaAbierta($fechaAnterior);
+            if (! $fechaNueva->isSameDay($fechaAnterior)) {
+                $cajaService->recalcularCajaAbierta($fechaNueva);
+            }
+
+            $venta->load(['detalles.producto', 'metodoPago']);
+            AuditService::logVentaEditada($venta, $valoresAnteriores);
+
+            return $venta;
+        }, 3);
     }
 
     /**
@@ -166,80 +141,30 @@ class VentaService
     }
 
     /**
-     * Recalcula una edición después de que Filament guardó sus relaciones.
-     * El método asume una transacción exterior (la que provee Filament).
+     * Bloquea las filas de producto (en orden de id) y valida existencia,
+     * estado y stock. $reservadas son las cantidades que la venta ya tenía
+     * (edición): cuentan como disponibles y permiten conservar un producto
+     * que fue desactivado después de venderlo.
      *
-     * @param  array<int, array<string, mixed>>  $detallesAnteriores
-     */
-    public function reconciliarEdicion(Venta $venta, array $detallesAnteriores, Carbon|string $fechaVentaAnterior): void
-    {
-        DB::transaction(function () use ($venta, $detallesAnteriores, $fechaVentaAnterior): void {
-            $this->asegurarCajaNoCerrada(Carbon::parse($fechaVentaAnterior));
-            $this->asegurarCajaNoCerrada(Carbon::parse($venta->fecha_venta));
-            $this->obtenerMetodoPagoActivo($venta->metodo_pago_id);
-            $cantidadesAnteriores = $this->agruparCantidades($detallesAnteriores);
-            $detallesNuevos = $venta->detalles()->get();
-            if ($detallesNuevos->isEmpty()) {
-                throw ValidationException::withMessages(['detalles' => 'La venta debe tener al menos un producto.']);
-            }
-            $cantidadesNuevas = $this->agruparCantidades($detallesNuevos->map(fn ($detalle) => $detalle->only(['producto_id', 'cantidad']))->all());
-            $ids = array_unique(array_merge(array_keys($cantidadesAnteriores), array_keys($cantidadesNuevas)));
-            $productos = Producto::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-
-            foreach ($cantidadesNuevas as $productoId => $cantidadNueva) {
-                $producto = $productos->get($productoId);
-                $disponible = ($producto?->stock_actual ?? 0) + ($cantidadesAnteriores[$productoId] ?? 0);
-                if ($producto === null || ! $producto->activo || $cantidadNueva > $disponible) {
-                    throw ValidationException::withMessages(['detalles' => 'La edición supera el stock disponible o contiene un producto inactivo.']);
-                }
-            }
-
-            foreach ($cantidadesAnteriores as $productoId => $cantidad) {
-                $productos->get($productoId)->increment('stock_actual', $cantidad);
-            }
-
-            $totalCentavos = 0;
-            foreach ($detallesNuevos as $detalle) {
-                $precioCentavos = $this->aCentavos($productos->get($detalle->producto_id)->precio_venta);
-                $subtotalCentavos = $precioCentavos * $detalle->cantidad;
-                $detalle->updateQuietly([
-                    'precio_unitario' => $this->desdeCentavos($precioCentavos),
-                    'subtotal' => $this->desdeCentavos($subtotalCentavos),
-                ]);
-                $totalCentavos += $subtotalCentavos;
-            }
-
-            foreach ($cantidadesNuevas as $productoId => $cantidad) {
-                $productos->get($productoId)->decrement('stock_actual', $cantidad);
-            }
-
-            $venta->updateQuietly(['total' => $this->desdeCentavos($totalCentavos)]);
-            app(CajaService::class)->recalcularCajaAbierta($venta->fecha_venta);
-        }, 3);
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $detalles
+     * @param  array<int|string, array<string, mixed>>  $detalles
+     * @param  array<int, int>  $reservadas
      * @return array{0: Collection<int, Producto>, 1: array<int, int>}
      */
-    private function bloquearYValidarProductos(array $detalles): array
+    private function bloquearYValidarProductos(array $detalles, array $reservadas = []): array
     {
         if ($detalles === []) {
             throw ValidationException::withMessages(['detalles' => 'La venta debe tener al menos un producto.']);
         }
 
-        $cantidades = $this->agruparCantidades($detalles);
         foreach ($detalles as $indice => $detalle) {
-            $productoId = $detalle['producto_id'] ?? null;
-            $cantidad = $detalle['cantidad'] ?? null;
-
-            if (! filter_var($productoId, FILTER_VALIDATE_INT) || ! is_string($cantidad) && ! is_int($cantidad) || ! preg_match('/^[1-9][0-9]*$/', (string) $cantidad)) {
+            if (! filter_var($detalle['producto_id'] ?? null, FILTER_VALIDATE_INT) || $this->normalizarCantidad($detalle['cantidad'] ?? null) === null) {
                 throw ValidationException::withMessages(["detalles.{$indice}" => 'Cada detalle debe indicar un producto y una cantidad entera positiva.']);
             }
         }
 
+        $cantidades = $this->agruparCantidades($detalles);
         $productos = Producto::query()
-            ->whereIn('id', array_keys($cantidades))
+            ->whereIn('id', array_unique(array_merge(array_keys($cantidades), array_keys($reservadas))))
             ->orderBy('id')
             ->lockForUpdate()
             ->get()
@@ -247,12 +172,13 @@ class VentaService
 
         foreach ($cantidades as $productoId => $cantidad) {
             $producto = $productos->get($productoId);
+            $reservada = $reservadas[$productoId] ?? 0;
 
-            if ($producto === null || ! $producto->activo) {
+            if ($producto === null || (! $producto->activo && $reservada === 0)) {
                 throw ValidationException::withMessages(['detalles' => 'Uno de los productos no existe o está inactivo.']);
             }
 
-            if ($cantidad > $producto->stock_actual) {
+            if ($cantidad > $producto->stock_actual + $reservada) {
                 throw ValidationException::withMessages(['detalles' => "Stock insuficiente para {$producto->nombre}."]);
             }
         }
@@ -260,19 +186,91 @@ class VentaService
         return [$productos, $cantidades];
     }
 
-    /** @param array<int, array<string, mixed>> $detalles @return array<int, int> */
+    /**
+     * Calcula las líneas con el precio vigente en BD, nunca con el del navegador.
+     *
+     * @param  array<int|string, array<string, mixed>>  $detalles
+     * @param  Collection<int, Producto>  $productos
+     * @return array{0: array<int, array{producto_id: int, cantidad: int, precio_unitario: string, subtotal: string}>, 1: int}
+     */
+    private function calcularLineas(array $detalles, Collection $productos): array
+    {
+        $lineas = [];
+        $totalCentavos = 0;
+
+        foreach ($detalles as $detalle) {
+            $producto = $productos->get((int) $detalle['producto_id']);
+            $cantidad = $this->normalizarCantidad($detalle['cantidad']);
+            $precioCentavos = $this->aCentavos($producto->precio_venta);
+            $subtotalCentavos = $precioCentavos * $cantidad;
+            $totalCentavos += $subtotalCentavos;
+
+            $lineas[] = [
+                'producto_id' => $producto->id,
+                'cantidad' => $cantidad,
+                'precio_unitario' => $this->desdeCentavos($precioCentavos),
+                'subtotal' => $this->desdeCentavos($subtotalCentavos),
+            ];
+        }
+
+        return [$lineas, $totalCentavos];
+    }
+
+    /**
+     * Aplica un cambio de stock ya validado (negativo = salida por venta,
+     * positivo = devolución por edición) y lo traza en MovimientoInventario.
+     * Query builder sin eventos: el ProductoObserver solo traza ajustes manuales.
+     */
+    private function moverStock(Producto $producto, int $delta, Venta $venta, string $motivo): void
+    {
+        $stockAnterior = $producto->stock_actual;
+        Producto::query()->whereKey($producto->id)->increment('stock_actual', $delta);
+        $producto->stock_actual = $stockAnterior + $delta;
+
+        MovimientoInventario::create([
+            'producto_id' => $producto->id,
+            'user_id' => Auth::id(),
+            'tipo' => $delta < 0 ? MovimientoInventario::TIPO_VENTA : MovimientoInventario::TIPO_DEVOLUCION,
+            'cantidad' => abs($delta),
+            'stock_anterior' => $stockAnterior,
+            'stock_nuevo' => $stockAnterior + $delta,
+            'motivo' => $motivo,
+            'observaciones' => $venta->observaciones,
+            'referencia_type' => Venta::class,
+            'referencia_id' => $venta->id,
+        ]);
+    }
+
+    /** @param array<int|string, array<string, mixed>> $detalles @return array<int, int> */
     private function agruparCantidades(array $detalles): array
     {
         $cantidades = [];
         foreach ($detalles as $detalle) {
             $productoId = $detalle['producto_id'] ?? null;
-            $cantidad = $detalle['cantidad'] ?? null;
-            if (filter_var($productoId, FILTER_VALIDATE_INT) && preg_match('/^[1-9][0-9]*$/', (string) $cantidad)) {
-                $cantidades[(int) $productoId] = ($cantidades[(int) $productoId] ?? 0) + (int) $cantidad;
+            $cantidad = $this->normalizarCantidad($detalle['cantidad'] ?? null);
+            if (filter_var($productoId, FILTER_VALIDATE_INT) && $cantidad !== null) {
+                $cantidades[(int) $productoId] = ($cantidades[(int) $productoId] ?? 0) + $cantidad;
             }
         }
 
         return $cantidades;
+    }
+
+    /**
+     * Cantidad entera positiva o null. Acepta int, string de dígitos o float
+     * entero (el TextInput numérico de Filament hidrata 4 como 4.0).
+     */
+    private function normalizarCantidad(mixed $cantidad): ?int
+    {
+        if (is_float($cantidad) && floor($cantidad) === $cantidad && $cantidad >= 1 && $cantidad <= PHP_INT_MAX) {
+            return (int) $cantidad;
+        }
+
+        if ((is_int($cantidad) || is_string($cantidad)) && preg_match('/^[1-9][0-9]*$/', (string) $cantidad)) {
+            return (int) $cantidad;
+        }
+
+        return null;
     }
 
     private function obtenerMetodoPagoActivo(mixed $metodoPagoId): MetodoPago
@@ -296,20 +294,5 @@ class VentaService
         if ($caja?->estado === 'cerrada') {
             throw ValidationException::withMessages(['fecha_venta' => 'No se pueden registrar ventas en una caja cerrada.']);
         }
-    }
-
-    private function aCentavos(mixed $valor): int
-    {
-        $normalizado = str_replace(',', '.', trim((string) $valor));
-        if (! preg_match('/^([0-9]+)(?:\.([0-9]{1,2}))?$/', $normalizado, $coincidencias)) {
-            throw ValidationException::withMessages(['total' => 'El valor monetario no es válido.']);
-        }
-
-        return ((int) $coincidencias[1] * 100) + (int) str_pad($coincidencias[2] ?? '', 2, '0');
-    }
-
-    private function desdeCentavos(int $centavos): string
-    {
-        return sprintf('%d.%02d', intdiv($centavos, 100), abs($centavos % 100));
     }
 }

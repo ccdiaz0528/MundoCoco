@@ -6,6 +6,7 @@ use App\Models\Caja;
 use App\Models\Gasto;
 use App\Models\MetodoPago;
 use App\Models\Venta;
+use App\Support\Dinero;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 class CajaService
 {
+    use Dinero;
+
     /** @param array<string, mixed> $atributos */
     public function abrir(array $atributos): Caja
     {
@@ -24,7 +27,7 @@ class CajaService
             }
 
             $totales = $this->totalesPorFecha($fecha);
-            $saldoInicial = $this->aCentavos($atributos['saldo_inicial'] ?? 0);
+            $saldoInicial = $this->aCentavos($atributos['saldo_inicial'] ?? 0, 'saldo_inicial');
             $saldoTeorico = $saldoInicial + $this->aCentavos($totales['total']) - $this->aCentavos($totales['gastos']);
 
             return Caja::query()->create([
@@ -55,7 +58,7 @@ class CajaService
             }
 
             $totales = $this->totalesPorFecha($caja->fecha);
-            $saldoReal = $this->aCentavos($datos['saldo_real'] ?? null);
+            $saldoReal = $this->aCentavos($datos['saldo_real'] ?? null, 'saldo_real');
             // RF11: Saldo Teórico = Base + Ventas - Gastos
             $esperado = $this->aCentavos($caja->saldo_inicial) + $this->aCentavos($totales['total']) - $this->aCentavos($totales['gastos']);
 
@@ -134,20 +137,5 @@ class CajaService
             'total' => $this->desdeCentavos($total),
             'gastos' => $this->desdeCentavos($gastos),
         ];
-    }
-
-    private function aCentavos(mixed $valor): int
-    {
-        $normalizado = str_replace(',', '.', trim((string) $valor));
-        if (! preg_match('/^([0-9]+)(?:\.([0-9]{1,2}))?$/', $normalizado, $coincidencias)) {
-            throw ValidationException::withMessages(['saldo_real' => 'El valor monetario no es válido.']);
-        }
-
-        return ((int) $coincidencias[1] * 100) + (int) str_pad($coincidencias[2] ?? '', 2, '0');
-    }
-
-    private function desdeCentavos(int $centavos): string
-    {
-        return sprintf('%d.%02d', intdiv($centavos, 100), abs($centavos % 100));
     }
 }

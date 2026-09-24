@@ -28,6 +28,9 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            // Create/Edit de recursos corren en una transacción: si algo falla
+            // después de guardar, no quedan registros a medias.
+            ->databaseTransactions()
             ->brandName('MundoCoco')            // ✅ nombre del panel
             ->colors([
                 'primary' => Color::Amber,

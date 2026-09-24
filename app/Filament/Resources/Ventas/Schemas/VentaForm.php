@@ -28,11 +28,13 @@ class VentaForm
                             ->searchable()
                             ->preload(),
 
+                        // Solo informativo: VentaService recalcula el total con precios de BD.
                         TextInput::make('total')
                             ->label('Total Venta')
                             ->numeric()
                             ->prefix('$')
                             ->readOnly()
+                            ->dehydrated(false)
                             ->default(0),
 
                         Textarea::make('observaciones')
@@ -44,18 +46,25 @@ class VentaForm
                 Section::make('Productos de la Venta')
                     ->icon('heroicon-o-cube')
                     ->schema([
+                        // Sin ->relationship(): los detalles los persiste VentaService
+                        // (CreateVenta/EditVenta), no Filament.
                         Repeater::make('detalles')
                             ->label('')
-                            ->relationship('detalles')
                             ->schema([
 
                                 // Fila 1: selector de producto ancho completo
                                 Select::make('producto_id')
                                     ->label('Producto')
-                                    ->options(
-                                        Producto::where('activo', true)->orderBy('nombre')->get()
-                                            ->mapWithKeys(fn (Producto $p) => [$p->id => "{$p->codigo} · {$p->nombre}"])
-                                    )
+                                    // Búsqueda en servidor: no carga todo el catálogo al abrir el formulario.
+                                    ->getSearchResultsUsing(fn (string $search): array => Producto::query()
+                                        ->where('activo', true)
+                                        ->where(fn ($query) => $query->where('nombre', 'like', "%{$search}%")->orWhere('codigo', 'like', "%{$search}%"))
+                                        ->orderBy('nombre')
+                                        ->limit(50)
+                                        ->get()
+                                        ->mapWithKeys(fn (Producto $producto): array => [$producto->id => "{$producto->codigo} · {$producto->nombre}"])
+                                        ->all())
+                                    ->getOptionLabelUsing(fn ($value): ?string => ($producto = Producto::find($value)) ? "{$producto->codigo} · {$producto->nombre}" : null)
                                     ->required()
                                     ->searchable()
                                     ->disableOptionsWhenSelectedInSiblingRepeaterItems()
@@ -94,14 +103,15 @@ class VentaForm
                                     ->label('Precio Unitario')
                                     ->numeric()
                                     ->prefix('$')
-                                    ->required()
-                                    ->readOnly(),
+                                    ->readOnly()
+                                    ->dehydrated(false),
 
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
                                     ->numeric()
                                     ->prefix('$')
-                                    ->readOnly(),
+                                    ->readOnly()
+                                    ->dehydrated(false),
                             ])
                             ->columns(3) // ✅ fila 2 queda en 3 columnas iguales
                             ->addActionLabel('+ Agregar producto')

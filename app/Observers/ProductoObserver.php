@@ -8,6 +8,17 @@ use Illuminate\Support\Facades\Auth;
 
 class ProductoObserver
 {
+    /**
+     * Stock antes de un ajuste manual. Estático porque Laravel resuelve una
+     * instancia distinta del observer por cada evento (Class@event), así que
+     * el estado de instancia no sobrevive de updating a updated.
+     * Se guarda aquí (no en atributos del modelo) para no contaminar
+     * el UPDATE con columnas inexistentes.
+     *
+     * @var array<int, array{anterior: int, nuevo: int}>
+     */
+    private static array $ajustes = [];
+
     public function created(Producto $producto): void
     {
         // RF02: Al crear producto con stock inicial, registrar trazabilidad
@@ -27,39 +38,38 @@ class ProductoObserver
 
     public function updating(Producto $producto): void
     {
-        // Si se edita stock_actual manualmente fuera de movimientos, registrar ajuste
-        if ($producto->isDirty('stock_actual')) {
-            $anterior = $producto->getOriginal('stock_actual');
-            $nuevo = $producto->stock_actual;
-            $diff = $nuevo - $anterior;
-
-            if ($diff !== 0 && ! app()->runningInConsole() && ! request()->routeIs('*.movimientos.*')) {
-                // Evitar duplicar cuando viene de InventarioService que ya crea movimiento
-                // Solo si no estamos dentro de transacción de InventarioService
-                $tipo = $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO;
-
-                // Se creará en updated para tener ID
-                $producto->setAttribute('_movimiento_diff', $diff);
-                $producto->setAttribute('_movimiento_anterior', $anterior);
-                $producto->setAttribute('_movimiento_nuevo', $nuevo);
-                $producto->setAttribute('_movimiento_tipo', $tipo);
-            }
+        // Si se edita stock_actual manualmente fuera de movimientos, registrar ajuste.
+        // Se excluye solo el módulo de movimientos, cuyos servicios ya crean
+        // su propio MovimientoInventario. Los seeders usan WithoutModelEvents,
+        // así que no necesitan exclusión adicional (y en consola/tinker los
+        // ajustes también deben quedar trazados).
+        if ($producto->isDirty('stock_actual') && ! request()->routeIs('*.movimientos.*')) {
+            self::$ajustes[$producto->id] = [
+                'anterior' => $producto->getOriginal('stock_actual'),
+                'nuevo' => $producto->stock_actual,
+            ];
         }
     }
 
     public function updated(Producto $producto): void
     {
-        if ($producto->hasAttribute('_movimiento_diff')) {
-            $diff = $producto->getAttribute('_movimiento_diff');
-            MovimientoInventario::create([
-                'producto_id' => $producto->id,
-                'user_id' => Auth::id(),
-                'tipo' => $producto->getAttribute('_movimiento_tipo'),
-                'cantidad' => abs($diff),
-                'stock_anterior' => $producto->getAttribute('_movimiento_anterior'),
-                'stock_nuevo' => $producto->getAttribute('_movimiento_nuevo'),
-                'motivo' => 'Ajuste manual de stock',
-            ]);
+        $ajuste = self::$ajustes[$producto->id] ?? null;
+        unset(self::$ajustes[$producto->id]);
+
+        if ($ajuste === null || $ajuste['nuevo'] === $ajuste['anterior']) {
+            return;
         }
+
+        $diff = $ajuste['nuevo'] - $ajuste['anterior'];
+
+        MovimientoInventario::create([
+            'producto_id' => $producto->id,
+            'user_id' => Auth::id(),
+            'tipo' => $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO,
+            'cantidad' => abs($diff),
+            'stock_anterior' => $ajuste['anterior'],
+            'stock_nuevo' => $ajuste['nuevo'],
+            'motivo' => 'Ajuste manual de stock',
+        ]);
     }
 }

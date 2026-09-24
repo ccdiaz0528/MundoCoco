@@ -93,24 +93,26 @@ class ReporteService
             ->get();
     }
 
-    // RF09: Ventas por categoría
+    // RF09: Ventas por categoría (agregado en SQL, no en memoria)
     public function ventasPorCategoria(Carbon|string $desde, Carbon|string $hasta): Collection
     {
         $desde = Carbon::parse($desde)->startOfDay();
         $hasta = Carbon::parse($hasta)->endOfDay();
+        // Expresión repetida (no alias) para compatibilidad PostgreSQL.
+        $categoria = "COALESCE(categorias.nombre, 'Sin categoría')";
 
-        return VentaDetalle::whereHas('venta', fn ($q) => $q->whereBetween('fecha_venta', [$desde, $hasta]))
-            ->with('producto.categoria')
-            ->get()
-            ->groupBy(fn ($d) => $d->producto->categoria->nombre ?? 'Sin categoría')
-            ->map(fn ($group, $categoria) => [
-                'categoria' => $categoria,
-                'cantidad_vendida' => $group->sum('cantidad'),
-                'ingreso_total' => $group->sum('subtotal'),
-                'transacciones' => $group->count(),
-            ])
-            ->sortByDesc('ingreso_total')
-            ->values();
+        return VentaDetalle::query()
+            ->join('ventas', 'ventas.id', '=', 'venta_detalles.venta_id')
+            ->join('productos', 'productos.id', '=', 'venta_detalles.producto_id')
+            ->leftJoin('categorias', 'categorias.id', '=', 'productos.categoria_id')
+            ->whereBetween('ventas.fecha_venta', [$desde, $hasta])
+            ->selectRaw("{$categoria} as categoria")
+            ->selectRaw('SUM(venta_detalles.cantidad) as cantidad_vendida')
+            ->selectRaw('SUM(venta_detalles.subtotal) as ingreso_total')
+            ->selectRaw('COUNT(*) as transacciones')
+            ->groupBy(DB::raw($categoria))
+            ->orderByDesc('ingreso_total')
+            ->get();
     }
 
     // RF09: Productos más vendidos

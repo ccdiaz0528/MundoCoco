@@ -28,6 +28,11 @@ class AuditService
         self::log('venta_creada', $venta, $venta->toArray());
     }
 
+    public static function logVentaEditada($venta, array $anteriores): void
+    {
+        self::log('venta_editada', $venta, $venta->toArray(), $anteriores);
+    }
+
     public static function logCajaCerrada($caja): void
     {
         self::log('caja_cerrada', $caja, $caja->toArray());

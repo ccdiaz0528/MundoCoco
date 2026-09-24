@@ -63,7 +63,9 @@ class InventarioService
             $anterior = $producto->stock_actual;
             $nuevo = $anterior + $cantidad;
 
-            $producto->increment('stock_actual', $cantidad);
+            // Query builder (sin eventos): el movimiento ya se registra abajo
+            // y el observer solo debe trazar ajustes manuales del panel.
+            Producto::query()->whereKey($producto->id)->increment('stock_actual', $cantidad);
 
             return MovimientoInventario::create([
                 'producto_id' => $producto->id,
@@ -105,7 +107,8 @@ class InventarioService
             }
 
             $nuevo = $anterior - $cantidad;
-            $producto->decrement('stock_actual', $cantidad);
+            // Query builder (sin eventos): ver adicionarStock.
+            Producto::query()->whereKey($producto->id)->decrement('stock_actual', $cantidad);
 
             return MovimientoInventario::create([
                 'producto_id' => $producto->id,
@@ -167,27 +170,20 @@ class InventarioService
     }
 
     /**
-     * Valorización: cálculo RF08
+     * Valorización: cálculo RF08. Delega en ReporteService (fuente única)
+     * y adapta el formato histórico de este servicio.
      */
     public function valorizacionInventario(?int $categoriaId = null): array
     {
-        $q = Producto::query()->where('activo', true);
-        if ($categoriaId) {
-            $q->where('categoria_id', $categoriaId);
-        }
-
-        $productos = $q->get();
-        $totalCosto = $productos->sum(fn ($p) => (float) $p->precio_costo * $p->stock_actual);
-        $totalVenta = $productos->sum(fn ($p) => (float) $p->precio_venta * $p->stock_actual);
-
-        $count = $productos->count();
+        $valorizacion = app(ReporteService::class)->valorizacionInventario($categoriaId);
+        $formato = fn ($valor): string => number_format((float) $valor, 2, '.', '');
 
         return [
-            'total_costo' => number_format($totalCosto, 2, '.', ''),
-            'total_venta' => number_format($totalVenta, 2, '.', ''),
-            'ganancia_potencial' => number_format($totalVenta - $totalCosto, 2, '.', ''),
-            'productos' => $count,
-            'count' => $count,
+            'total_costo' => $formato($valorizacion['total_costo']),
+            'total_venta' => $formato($valorizacion['total_venta']),
+            'ganancia_potencial' => $formato($valorizacion['ganancia_potencial']),
+            'productos' => $valorizacion['count'],
+            'count' => $valorizacion['count'],
         ];
     }
 }

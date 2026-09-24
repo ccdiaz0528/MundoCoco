@@ -26,18 +26,7 @@ class GastoPolicy
     public function update(User $user, Gasto $gasto): bool
     {
         // No editar gastos de cajas cerradas
-        if ($gasto->caja_id) {
-            $caja = Caja::find($gasto->caja_id);
-            if ($caja && $caja->estado === 'cerrada') {
-                return false;
-            }
-        }
-        // Si es por fecha cerrada, tampoco
-        if (Caja::whereDate('fecha', $gasto->fecha)->where('estado', 'cerrada')->exists()) {
-            return false;
-        }
-
-        return $user->hasRole(['Admin', 'Operador']);
+        return $user->hasRole(['Admin', 'Operador']) && ! $this->esDeCajaCerrada($gasto);
     }
 
     public function delete(User $user, Gasto $gasto): bool
