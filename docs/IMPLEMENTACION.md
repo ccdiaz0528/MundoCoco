@@ -1,9 +1,9 @@
 # MundoCoco - Implementación Estricta del Anteproyecto
 
 > **Documento vivo** - Actualizado en cada fase de implementación
-> Fecha inicio: 2026-09-08 | Fecha cierre: 2026-09-09
+> Fecha inicio: 2026-09-08 | Fecha cierre: 2026-09-24
 > Objetivo: Cumplimiento 100% del anteproyecto + RF/RNF + buenas prácticas
-> Stack: Laravel 13 + Filament 5 + PHP 8.3 + Pest 4.5 | Tests: 103/103 verde | Pint: verde | Vite: verde
+> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 161/161 verde | Pint: verde | Vite: verde
 
 ---
 
@@ -21,7 +21,7 @@
 | 7 | Pruebas funcionales completas + calidad | ✅ | 2026-09-09 | 84 tests, `vendor/bin/pint --test` verde, `npm run build` verde |
 | 8 | Cierre de cumplimiento estricto RF/RNF (auditoría externa) | ✅ | 2026-09-09 | 103 tests, backup real, export PDF/XLSX, código producto, Fase 8 abajo |
 
-**Tests finales:** 112 passed (259 assertions) | **Cobertura RF/RNF:** 12 RF + paths críticos (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §10 desviaciones declaradas y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 6 desviaciones justificadas
+**Tests finales:** 161 passed (570 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
 
 ---
 
@@ -52,7 +52,7 @@
 | RF11 Caja con Gastos | ❌ solo ventas | ✅ `caja.total_gastos`, `saldo_teorico`, `Gasto.php:7`, `CajaForm.php:63` muestra RF11 | `Caja.php:22`, `CajaService.php:26,54,94,114` |
 | RF12 Trazabilidad | ❌ sin tabla | ✅ `movimientos_inventario` con `producto_id,user_id,tipo,cantidad,stock_anterior,nuevo,motivo,referencia` + `MovimientosTable.php:13` filtros | `MovimientoInventario.php:7` |
 | RF08/RF09 Reportes | ❌ sin reportes | ✅ `ReporteService` 8 métodos + `Reportes.php` Page + export CSV `web.php:11` | `ReporteService.php:12`, `Reportes.php:11` |
-| RF06 Categorías | ❌ Postres/Ingredientes | ✅ Helados/Bebidas/Aceites/Productos de Coco con 38 productos RF06 | `CategoriaSeeder.php:12`, `ProductoSeeder.php:12` |
+| RF06 Categorías | ❌ Postres/Ingredientes | ✅ Helados/Bebidas/Aceites/Productos de Coco con 42 productos RF06 | `CategoriaSeeder.php:12`, `ProductoSeeder.php:12` |
 | RF10 Roles | ❌ solo 2 | ✅ Admin/Operador/Consultor + 24 permisos, Policies actualizadas | `RoleSeeder.php:13`, `ProductoPolicy.php:14` |
 | Legal Ley 1581/1377 | ❌ sin política | ✅ `privacidad.blade.php`, `AuditLog.php:7`, `AuditService.php:10`, backup `console.php:10` | `routes/web.php:11`, `console.php:10` |
 | RNF04 Backup | ❌ sin schedule | ✅ `Schedule::command('backup:run')->dailyAt('02:00')` + limpieza 365 días | `console.php:10` |
@@ -215,7 +215,7 @@ Auditoría de `DOCS DE PROYECTO/` contra el código: el documento de cumplimient
 - [x] RNF08: SQL con variantes para SQL Server; respaldo portable
 - [x] RNF10: cobertura medida en CI (pcov, `--min=80` sobre código crítico); Ley 1581 con consentimiento informado obligatorio
 - [x] Errores previos encontrados: `CajaForm` usaba `TextInput::color()` (500 al abrir caja), CI con PHP 8.3 incompatible con el `composer.lock` (Symfony 8 exige 8.4), manual de usuario truncado
-- [x] Tests 160/160 (566 assertions)
+- [x] Tests 161/161 (570 assertions)
 
 ---
 
@@ -265,9 +265,9 @@ Auditoría de `DOCS DE PROYECTO/` contra el código: el documento de cumplimient
 
 ```powershell
 composer install
-php artisan migrate --seed # categorías RF06 38 productos
+php artisan migrate --seed # categorías RF06 42 productos
 vendor/bin/pint --test # verde
-php artisan test # 84 passed
+php artisan test # 161 passed
 npm ci; npm run build # 54 modules 1.31s
 php artisan serve # /admin
 # Reportes: /admin/reportes + /reportes/export/{tipo}/{csv,pdf,xlsx}
@@ -280,7 +280,7 @@ php artisan serve # /admin
 
 - Anteproyecto: Helados 14 sabores, Bebidas 13, Aceites 8, Coco 7 (Pág 1-2, RF06)
 - Legal: Ley 23/603/1581/1377/1266/527 (Pág 6-7) → `privacidad.blade.php`
-- Scrum: `quality.yml` CI push/PR PHP 8.3 + Node 20
+- Scrum: `quality.yml` CI push/PR PHP 8.4 + Node 20
 - RF y RNF: 12+10 en `DOCS DE PROYECTO/RF y RNF.docx` → `CUMPLIMIENTO_ANTEPROYECTO.md`
 ```
 

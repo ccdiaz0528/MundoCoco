@@ -1,11 +1,11 @@
 # Estrategia de pruebas - MundoCoco
 
-La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **160 tests (566 assertions)**, 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **161 tests (570 assertions)**, 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
 ## Estado Actual 2026-09-24
 
 ```
-PASS 160 tests (566 assertions)
+PASS 161 tests (570 assertions)
 vendor/bin/pint --test : verde (PSR-12)
 ```
 
