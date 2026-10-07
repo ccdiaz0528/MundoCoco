@@ -37,9 +37,20 @@ class AdminPanelProvider extends PanelProvider
             // Create/Edit de recursos corren en una transacción: si algo falla
             // después de guardar, no quedan registros a medias.
             ->databaseTransactions()
-            ->brandName('MundoCoco')            // ✅ nombre del panel
+            ->brandName('MundoCoco')
+            // Identidad visual tomada del logo: verde hoja (primario), naranja coco
+            // (acento/advertencias) y neutros cálidos color crema/café.
+            ->brandLogo(asset('images/logo.png'))
+            ->brandLogoHeight('2.75rem')
+            ->favicon(asset('images/favicon.png'))
+            ->font('Poppins')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#2f9a2c'),
+                'success' => Color::hex('#2f9a2c'),
+                'warning' => Color::hex('#d2531e'),
+                'danger' => Color::hex('#c81e3a'),
+                'info' => Color::hex('#0e7c86'),
+                'gray' => Color::Stone,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
@@ -70,6 +81,14 @@ class AdminPanelProvider extends PanelProvider
                 // Ley 1581: sin aceptar la política de datos no se opera el sistema.
                 ExigirConsentimientoDatos::class,
             ])
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => Blade::render('<style>
+                :root { --coco-crema: #fbf5e1; --coco-cafe: #4a2a1a; }
+                .fi-simple-layout { background: radial-gradient(circle at 20% 10%, #e3f5d8 0, transparent 45%), radial-gradient(circle at 85% 90%, #fbe0cf 0, transparent 45%), var(--coco-crema); }
+                .dark .fi-simple-layout { background: #1c1917; }
+                .fi-simple-main { border-top: 4px solid #d2531e; }
+                .fi-simple-header .fi-logo { height: 7rem !important; margin-bottom: .5rem; }
+                .fi-sidebar-header { border-bottom: 3px solid #2f9a2c; }
+            </style>'))
             // Ley 1581: la política de tratamiento de datos es visible desde el login.
             ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn (): string => Blade::render(
                 '<p style="text-align:center;font-size:12px;margin-top:12px;opacity:.75">Consulta la <a href="{{ route(\'privacidad\') }}" target="_blank" style="text-decoration:underline">política de tratamiento de datos personales</a> (Ley 1581 de 2012).</p>'
