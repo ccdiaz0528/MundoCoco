@@ -3,7 +3,7 @@
 > **Documento vivo** - Actualizado en cada fase de implementación
 > Fecha inicio: 2026-09-08 | Fecha cierre: 2026-09-24
 > Objetivo: Cumplimiento 100% del anteproyecto + RF/RNF + buenas prácticas
-> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 166/166 verde | Pint: verde | Vite: verde
+> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 174/174 verde | Pint: verde | Vite: verde
 
 ---
 
@@ -21,7 +21,7 @@
 | 7 | Pruebas funcionales completas + calidad | ✅ | 2026-09-09 | 84 tests, `vendor/bin/pint --test` verde, `npm run build` verde |
 | 8 | Cierre de cumplimiento estricto RF/RNF (auditoría externa) | ✅ | 2026-09-09 | 103 tests, backup real, export PDF/XLSX, código producto, Fase 8 abajo |
 
-**Tests finales:** 166 passed (585 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
+**Tests finales:** 174 passed (635 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
 
 ---
 
@@ -215,7 +215,7 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 - [x] RNF08: SQL con variantes para SQL Server; respaldo portable
 - [x] RNF10: cobertura medida en CI (pcov, `--min=80` sobre código crítico); Ley 1581 con consentimiento informado obligatorio
 - [x] Errores previos encontrados: `CajaForm` usaba `TextInput::color()` (500 al abrir caja), CI con PHP 8.3 incompatible con el `composer.lock` (Symfony 8 exige 8.4), manual de usuario truncado
-- [x] Tests 166/166 (585 assertions)
+- [x] Tests 174/174 (635 assertions)
 
 ---
 
@@ -265,9 +265,9 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 
 ```powershell
 composer install
-php artisan migrate --seed # categorías RF06 42 productos
+php artisan migrate --seed # categorías RF06 + 50 productos reales (stock 0)
 vendor/bin/pint --test # verde
-php artisan test # 166 passed
+php artisan test # 174 passed
 npm ci; npm run build # 54 modules 1.31s
 php artisan serve # /admin
 # Reportes: /admin/reportes + /reportes/export/{tipo}/{csv,pdf,xlsx}

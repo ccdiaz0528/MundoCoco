@@ -102,8 +102,17 @@ class CajaForm
                             ->hint('Materia prima, servicios, etc.')
                             ->hintColor('danger'),
 
+                        TextInput::make('total_retiros')
+                            ->label('Retiros / Consignaciones del Día')
+                            ->numeric()
+                            ->prefix('$')
+                            ->default(0)
+                            ->readOnly()
+                            ->hint('Efectivo que sale de la caja; no es gasto')
+                            ->hintColor('warning'),
+
                         TextInput::make('saldo_teorico')
-                            ->label('Saldo Teórico (Base + Ventas - Gastos)')
+                            ->label('Saldo Teórico (Base + Ventas - Gastos - Retiros)')
                             ->numeric()
                             ->prefix('$')
                             ->default(0)
@@ -128,7 +137,8 @@ class CajaForm
         $set('total_tarjetas', $totales['tarjetas']);
         $set('total_ventas', $totales['total']);
         $set('total_gastos', $totales['gastos']);
+        $set('total_retiros', $totales['retiros']);
         // Saldo teórico provisional (sin saldo_inicial); se calcula al abrir/cerrar con saldo inicial
-        $set('saldo_teorico', (float) $totales['total'] - (float) $totales['gastos']);
+        $set('saldo_teorico', (float) $totales['total'] - (float) $totales['gastos'] - (float) $totales['retiros']);
     }
 }

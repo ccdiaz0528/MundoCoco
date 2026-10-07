@@ -26,10 +26,12 @@ class GastosTable
                 TextColumn::make('categoria')
                     ->label('Categoría')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => Gasto::CATEGORIAS[$state] ?? $state)
                     ->color(fn (string $state): string => match ($state) {
                         'materia_prima' => 'warning',
                         'servicios' => 'info',
                         'transporte' => 'success',
+                        Gasto::RETIRO => 'danger',
                         default => 'gray',
                     }),
                 TextColumn::make('monto')

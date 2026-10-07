@@ -210,7 +210,7 @@ class ReporteService
 
     /**
      * RF11 "Reporte de flujo de efectivo diario":
-     * Saldo = Base + Ventas_Efectivo + Ventas_Nequi (+ otros medios) - Gastos.
+     * Saldo = Base + Ventas_Efectivo + Ventas_Nequi (+ otros medios) - Gastos - Retiros.
      * La base es el saldo inicial de la caja de ese día (0 si no se abrió).
      */
     public function flujoCajaDiario(Carbon|string $fecha): array
@@ -227,11 +227,13 @@ class ReporteService
             'base' => number_format($base, 2, '.', ''),
             'ventas' => $totales,
             'gastos_total' => $totales['gastos'],
-            'gastos_count' => Gasto::whereDate('fecha', $fecha)->count(),
+            'gastos_count' => Gasto::soloGastos()->whereDate('fecha', $fecha)->count(),
+            'retiros_total' => $totales['retiros'],
+            'retiros_count' => Gasto::soloRetiros()->whereDate('fecha', $fecha)->count(),
             'transacciones' => Venta::vigentes()->whereDate('fecha_venta', $fecha)->count(),
             'anuladas_count' => (clone $anuladas)->count(),
             'anuladas_total' => number_format((float) (clone $anuladas)->sum('total'), 2, '.', ''),
-            'saldo_teorico' => number_format($base + (float) $totales['total'] - (float) $totales['gastos'], 2, '.', ''),
+            'saldo_teorico' => number_format($base + (float) $totales['total'] - (float) $totales['gastos'] - (float) $totales['retiros'], 2, '.', ''),
             'saldo_real' => $caja?->estado === 'cerrada' ? (string) $caja->saldo_real : null,
             'diferencia' => $caja?->estado === 'cerrada' ? (string) $caja->diferencia : null,
         ];

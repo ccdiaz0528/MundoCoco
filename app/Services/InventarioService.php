@@ -113,6 +113,61 @@ class InventarioService
     }
 
     /**
+     * Cierre con conteo físico (reemplaza la planilla de inventario final):
+     * compara lo contado con el stock del sistema y registra la diferencia.
+     * - Modo normal: sobrante = ajuste_positivo, faltante = ajuste_negativo;
+     *   si coincide no se registra nada.
+     * - Modo inicial (primer conteo de la tienda): cada producto contado
+     *   recibe un movimiento "inicial" que fija su stock (RF02).
+     * Los productos sin conteo no se tocan. Todo o nada, en una transacción.
+     *
+     * @param  array<int|string, mixed>  $conteos  producto_id => cantidad contada
+     * @return Collection<int, array{producto: Producto, sistema: int, contado: int, diferencia: int, movimiento: ?MovimientoInventario}>
+     */
+    public function registrarConteo(array $conteos, bool $esInicial = false, ?string $observaciones = null, CarbonInterface|string|null $fecha = null): Collection
+    {
+        $conteos = collect($conteos)
+            ->reject(fn ($cantidad) => $cantidad === null || $cantidad === '')
+            ->map(function ($cantidad, $productoId): int {
+                if (! is_numeric($cantidad) || (int) $cantidad != $cantidad || (int) $cantidad < 0) {
+                    throw ValidationException::withMessages(["conteos.{$productoId}" => 'El conteo debe ser un número entero mayor o igual a cero.']);
+                }
+
+                return (int) $cantidad;
+            });
+
+        if ($conteos->isEmpty()) {
+            throw ValidationException::withMessages(['conteos' => 'Ingrese el conteo de al menos un producto.']);
+        }
+        $fecha = $this->fechaTransaccion($fecha);
+
+        return DB::transaction(function () use ($conteos, $esInicial, $observaciones, $fecha): Collection {
+            // Bloqueo en orden de id (mismo orden que VentaService) para evitar interbloqueos.
+            $productos = Producto::query()->whereIn('id', $conteos->keys()->map(fn ($id) => (int) $id))
+                ->orderBy('id')->lockForUpdate()->get();
+
+            if ($productos->count() !== $conteos->count()) {
+                throw ValidationException::withMessages(['conteos' => 'Uno de los productos no existe.']);
+            }
+
+            return $productos->map(function (Producto $producto) use ($conteos, $esInicial, $observaciones, $fecha): array {
+                $sistema = (int) $producto->stock_actual;
+                $contado = $conteos[$producto->id];
+                $diferencia = $contado - $sistema;
+
+                $movimiento = match (true) {
+                    $esInicial => $this->registrar($producto, MovimientoInventario::TIPO_INICIAL, $contado, $contado, 'Conteo físico (inventario inicial)', $observaciones, $fecha),
+                    $diferencia > 0 => $this->registrar($producto, MovimientoInventario::TIPO_AJUSTE_POSITIVO, $diferencia, $contado, 'Conteo físico: sobrante', $observaciones, $fecha),
+                    $diferencia < 0 => $this->registrar($producto, MovimientoInventario::TIPO_AJUSTE_NEGATIVO, -$diferencia, $contado, 'Conteo físico: faltante', $observaciones, $fecha),
+                    default => null,
+                };
+
+                return ['producto' => $producto, 'sistema' => $sistema, 'contado' => $contado, 'diferencia' => $diferencia, 'movimiento' => $movimiento];
+            });
+        }, 3);
+    }
+
+    /**
      * RF05: Stock_Total = Stock_Inicial + Entradas - Salidas, calculado desde
      * los movimientos. Un "inicial" fija la base, por eso solo cuentan los
      * movimientos desde el último inicial (o desde 0 si nunca hubo uno).

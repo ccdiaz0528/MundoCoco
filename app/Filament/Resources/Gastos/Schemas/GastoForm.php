@@ -32,7 +32,8 @@ class GastoForm
                     ->options(Gasto::CATEGORIAS)
                     ->required()
                     ->native(false)
-                    ->default('otros'),
+                    ->default('otros')
+                    ->helperText('Use "Retiro / consignación" para efectivo que sale de la caja sin ser un gasto (consignación al banco, entrega al dueño).'),
 
                 TextInput::make('monto')
                     ->label('Monto')

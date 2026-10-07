@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Gasto;
 use App\Models\Producto;
 use App\Models\Venta;
 use App\Services\CajaService;
@@ -28,7 +27,8 @@ class StatsOverview extends BaseWidget
             ->count();
 
         $totalesHoy = app(CajaService::class)->totalesPorFecha(today());
-        $gastosHoy = (float) Gasto::whereDate('fecha', today())->sum('monto');
+        // Sin retiros de efectivo: una consignación no es gasto del negocio.
+        $gastosHoy = (float) $totalesHoy['gastos'];
         $valorizacion = app(InventarioService::class)->valorizacionInventario();
 
         return [

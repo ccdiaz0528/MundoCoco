@@ -58,6 +58,12 @@ class CajasTable
                     ->money('COP')
                     ->color('danger'),
 
+                TextColumn::make('total_retiros')
+                    ->label('Retiros')
+                    ->money('COP')
+                    ->color('warning')
+                    ->toggleable(),
+
                 TextColumn::make('saldo_teorico')
                     ->label('Saldo Teórico')
                     ->money('COP')

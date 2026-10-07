@@ -20,7 +20,7 @@
 
 | Rol | Qué puede hacer |
 |-----|-----------------|
-| **Administrador** | Todo: catálogo, entradas de inventario, ventas y anulaciones, cajas, gastos, informes, auditoría, usuarios y roles. |
+| **Administrador** | Todo: catálogo, entradas de inventario y conteo físico, ventas y anulaciones, cajas, gastos y retiros, informes, auditoría, usuarios y roles. |
 | **Operario** | Registrar y corregir ventas, y consultar el inventario (productos, categorías y movimientos). |
 | **Consultor** | Solo ver y descargar los reportes. |
 
@@ -33,9 +33,12 @@
 | 1. Abrir la caja con el dinero base | Administrador | *Operación diaria → Cajas → Nueva caja* |
 | 2. Registrar entradas de mercancía | Administrador | *Catálogo → Movimientos → Nuevo movimiento* (sección 6.4) |
 | 3. Registrar cada venta | Operario o Administrador | *Operación diaria → Ventas → Nueva venta* (sección 3) |
-| 4. Registrar los gastos del día | Administrador | *Operación diaria → Gastos → Nuevo gasto* (sección 5) |
+| 4. Registrar los gastos y las consignaciones del día | Administrador | *Operación diaria → Gastos → Nuevo gasto* (sección 5) |
 | 5. Revisar alertas e informes | Todos según su rol | *Escritorio* e *Informes → Reportes* (sección 8) |
-| 6. Cerrar la caja contando el dinero | Administrador | *Cajas → Cerrar caja* (sección 4) |
+| 6. Contar el inventario y registrar el conteo | Administrador | *Catálogo → Conteo físico* (sección 6.5) |
+| 7. Cerrar la caja contando el dinero | Administrador | *Cajas → Cerrar caja* (sección 4) |
+
+> Antes del primer día de uso, el Administrador registra el **inventario inicial** con un conteo físico (sección 6.5). Hasta entonces los productos tienen stock 0 y aparecen en stock bajo.
 
 > Regla de oro: **una fecha con caja cerrada queda bloqueada**. Ya no se pueden registrar, editar ni anular ventas ni gastos de ese día. Revisa bien antes de cerrar.
 
@@ -80,7 +83,7 @@ Reglas importantes:
 
 *Menú: Operación diaria → Cajas. Solo Administrador.*
 
-Cada caja representa un día: saldo inicial (base), ventas separadas por **Efectivo, Nequi, Transferencias y Tarjetas**, total de ventas, **gastos del día**, **saldo teórico** y, al cerrar, **saldo real** (dinero contado) y **diferencia**.
+Cada caja representa un día: saldo inicial (base), ventas separadas por **Efectivo, Nequi, Transferencias y Tarjetas**, total de ventas, **gastos del día**, **retiros o consignaciones**, **saldo teórico** y, al cerrar, **saldo real** (dinero contado) y **diferencia**.
 
 ### 4.1 Abrir caja (Nueva caja)
 
@@ -96,7 +99,7 @@ Cada caja representa un día: saldo inicial (base), ventas separadas por **Efect
 
 El sistema calcula:
 
-- **Saldo teórico = Base + Ventas (Efectivo + Nequi + otros medios) − Gastos**
+- **Saldo teórico = Base + Ventas (Efectivo + Nequi + otros medios) − Gastos − Retiros**
 - **Diferencia = dinero contado − saldo teórico**
 
 Una diferencia **0** indica cuadre perfecto; **negativa**, que falta dinero; **positiva**, que sobra. Al cerrar, la caja queda bloqueada.
@@ -112,6 +115,13 @@ Registra lo que sale de caja: **materia prima, servicios, transporte u otros**, 
 - Los gastos **restan del saldo teórico** de la caja de su fecha.
 - No se pueden registrar, editar ni eliminar gastos de una fecha con caja cerrada.
 
+### 5.1 Retiros y consignaciones
+
+Cuando sale efectivo de la caja sin ser un gasto del negocio (por ejemplo, una **consignación al banco** o una entrega al dueño), regístralo en *Gastos → Nuevo gasto* con la categoría **Retiro / consignación**.
+
+- Resta del **saldo teórico** (ese dinero ya no está en el cajón), así el cuadre da correcto.
+- No se suma a los **gastos**: la caja, el Escritorio y el flujo de efectivo lo muestran aparte como *Retiros*.
+
 ---
 
 ## 6. Inventario
@@ -119,6 +129,8 @@ Registra lo que sale de caja: **materia prima, servicios, transporte u otros**, 
 ### 6.1 Productos
 
 *Menú: Catálogo → Productos.*
+
+El catálogo viene cargado con los **50 productos de la tienda** (19 helados, 16 bebidas, 8 aceites y 7 productos de coco) y sus precios de venta. El stock empieza en 0 y el costo vacío: el stock se fija con el primer conteo físico (sección 6.5) y el costo se completa editando cada producto.
 
 Columnas: código, nombre, categoría, precios, **stock** (en rojo si está en el mínimo o por debajo), **stock calculado**, mínimo y estado.
 
@@ -153,6 +165,17 @@ Cada entrada o salida queda registrada con **fecha de la transacción**, fecha y
 
 Tipos: **Inventario inicial** (fija el stock base), **Compra**, **Devolución**, **Ajuste positivo**, **Ajuste negativo** y **Merma/Pérdida**. Las ventas y anulaciones aparecen solas. Los movimientos no se pueden editar ni eliminar.
 
+### 6.5 Conteo físico (cierre de inventario)
+
+*Menú: Catálogo → Conteo físico. Solo Administrador.* Reemplaza la columna de *inventario final* de la planilla.
+
+1. Revisa la **fecha del conteo** y escribe en *Observaciones* quién contó o el turno.
+2. Cuenta cada producto y escribe la cantidad en **Contado**; la **Diferencia** se calcula en el momento (verde si sobra, rojo si falta).
+3. Deja vacío lo que no contaste: esos productos no se modifican.
+4. Pulsa **Registrar conteo**. Cada sobrante queda como *Ajuste positivo* y cada faltante como *Ajuste negativo*, con el motivo «Conteo físico». Al final se muestra la diferencia valorizada a precio de venta.
+
+> La **primera vez**, deja marcada la casilla **Es el inventario inicial de la tienda**: el conteo fija el stock (no calcula diferencias). Viene marcada mientras no haya movimientos.
+
 ---
 
 ## 7. Usuarios, roles y permisos
@@ -176,7 +199,7 @@ Tipos: **Inventario inicial** (fija el stock base), **Compra**, **Devolución**,
 
 ### 8.1 Escritorio
 
-- Indicadores del día: ventas de hoy y del mes, ventas en efectivo, **Nequi**, transferencias y tarjetas, gastos y valorización del inventario.
+- Indicadores del día: ventas de hoy y del mes, ventas en efectivo, **Nequi**, transferencias y tarjetas, gastos (sin retiros) y valorización del inventario.
 - **Productos con stock crítico:** lista de los productos en su mínimo o por debajo, con la **sugerencia de reorden** (unidades para volver al nivel objetivo).
 
 ### 8.2 Reportes
@@ -195,7 +218,7 @@ Elige el periodo (**Desde / Hasta**) y pulsa **Aplicar periodo**. Cada sección 
 | Movimientos de inventario | Historial del periodo |
 | Ventas diarias por producto | Unidades e ingreso de cada producto por día |
 | Ventas por categoría / Más vendidos / Ingresos por día | Análisis de ventas del periodo |
-| Flujo de efectivo | Del día *Hasta*: base, ventas por método, gastos, anuladas, saldo y, si la caja se cerró, lo contado y la diferencia |
+| Flujo de efectivo | Del día *Hasta*: base, ventas por método, gastos, retiros o consignaciones, anuladas, saldo y, si la caja se cerró, lo contado y la diferencia |
 
 Las ventas anuladas no se cuentan en ningún reporte de ventas.
 

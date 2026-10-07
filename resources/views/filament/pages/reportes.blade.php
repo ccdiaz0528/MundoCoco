@@ -262,7 +262,7 @@
             @endif
         </x-filament::section>
 
-        <x-filament::section heading="Flujo de efectivo del {{ $flujo['fecha'] }}" description="Caja {{ $flujo['caja'] }}. Saldo = Base + Ventas − Gastos.">
+        <x-filament::section heading="Flujo de efectivo del {{ $flujo['fecha'] }}" description="Caja {{ $flujo['caja'] }}. Saldo = Base + Ventas − Gastos − Retiros.">
             @include('filament.pages.partials.descargas', ['tipo' => 'flujo_caja'] + $rango)
             <table class="rpt-tabla">
                 <tbody>
@@ -273,6 +273,7 @@
                     <tr><td style="opacity:.7">Tarjetas</td><td class="num fuerte">{{ $pesos($flujo['ventas']['tarjetas']) }}</td></tr>
                     <tr><td style="opacity:.7">Total ventas ({{ $flujo['transacciones'] }})</td><td class="num" style="font-weight:800">{{ $pesos($flujo['ventas']['total']) }}</td></tr>
                     <tr><td style="opacity:.7">Gastos y compras ({{ $flujo['gastos_count'] }})</td><td class="num fuerte">{{ $pesos($flujo['gastos_total']) }}</td></tr>
+                    <tr><td style="opacity:.7">Retiros / consignaciones ({{ $flujo['retiros_count'] }})</td><td class="num fuerte">{{ $pesos($flujo['retiros_total']) }}</td></tr>
                     <tr><td style="opacity:.7">Ventas anuladas ({{ $flujo['anuladas_count'] }})</td><td class="num">{{ $pesos($flujo['anuladas_total']) }}</td></tr>
                     <tr><td class="fuerte">Saldo del día</td><td class="num" style="font-weight:800">{{ $pesos($flujo['saldo_teorico']) }}</td></tr>
                     @if($flujo['diferencia'] !== null)

@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Pages\ConsentimientoDatos;
+use App\Filament\Pages\ConteoFisico;
 use App\Filament\Pages\Reportes;
 use App\Filament\Resources\Movimientos\Pages\CreateMovimiento;
 use App\Filament\Widgets\StockCritico;
@@ -17,9 +18,12 @@ use App\Services\CajaService;
 use App\Services\InventarioService;
 use App\Services\ReporteService;
 use App\Services\VentaService;
+use Database\Seeders\CategoriaSeeder;
 use Database\Seeders\MetodoPagoSeeder;
+use Database\Seeders\ProductoSeeder;
 use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
@@ -485,7 +489,7 @@ describe('Pantallas del panel (humo)', function () {
         foreach (['/admin', '/admin/productos', '/admin/productos/create', '/admin/ventas', '/admin/ventas/create',
             "/admin/ventas/{$venta->id}/edit", '/admin/cajas', '/admin/cajas/create', '/admin/movimientos/movimiento-inventarios',
             '/admin/movimientos/movimiento-inventarios/create', '/admin/gastos', '/admin/categorias', '/admin/metodo-pagos',
-            '/admin/users', '/admin/users/create', '/admin/roles', '/admin/audit-logs', '/admin/reportes', '/admin/profile'] as $url) {
+            '/admin/users', '/admin/users/create', '/admin/roles', '/admin/audit-logs', '/admin/reportes', '/admin/conteo-fisico', '/admin/profile'] as $url) {
             $this->get($url)->assertOk();
         }
 
@@ -500,5 +504,154 @@ describe('Acceso al panel (RF10 + RNF04)', function () {
 
         $this->actingAs($sinRol)->get('/admin')->assertForbidden();
         $this->actingAs(tap(User::factory()->create())->assignRole('Consultor'))->get('/admin')->assertOk();
+    });
+});
+
+describe('Zona horaria de la tienda (Cali, UTC-5)', function () {
+    afterEach(fn () => Carbon::setTestNow());
+
+    it('usa America/Bogota y a las 9 p. m. locales la fecha sigue siendo la del día', function () {
+        expect(config('app.timezone'))->toBe('America/Bogota')
+            ->and(date_default_timezone_get())->toBe('America/Bogota');
+
+        // 2026-10-08 02:00 UTC = 2026-10-07 21:00 en Cali.
+        Carbon::setTestNow(Carbon::parse('2026-10-08 02:00:00', 'UTC'));
+
+        expect(now()->toDateString())->toBe('2026-10-07')
+            ->and(today()->toDateString())->toBe('2026-10-07')
+            ->and(now()->format('H:i'))->toBe('21:00');
+    });
+
+    it('una venta de las 9 p. m. cae en la caja de ese día y no en la del siguiente', function () {
+        $this->seed(MetodoPagoSeeder::class);
+        Carbon::setTestNow(Carbon::parse('2026-10-08 02:00:00', 'UTC'));
+        $producto = Producto::factory()->create(['precio_venta' => '10000.00', 'stock_actual' => 5]);
+
+        $venta = app(VentaService::class)->crear(['metodo_pago_id' => MetodoPago::where('nombre', MetodoPago::EFECTIVO)->value('id')], [['producto_id' => $producto->id, 'cantidad' => 1]]);
+        $caja = app(CajaService::class)->abrir(['fecha' => '2026-10-07', 'saldo_inicial' => '0']);
+
+        expect($venta->fecha_venta->toDateString())->toBe('2026-10-07')
+            ->and((string) $caja->total_ventas)->toBe('10000.00');
+    });
+});
+
+describe('RF06 catálogo real de la planilla de la tienda', function () {
+    it('siembra los 50 productos con las tarifas de la planilla, sin stock inventado y sin duplicar', function () {
+        $this->seed(CategoriaSeeder::class);
+        // Igual que DatabaseSeeder: sin eventos de modelo; el código RF01 debe asignarse igual.
+        Producto::withoutEvents(fn () => $this->seed(ProductoSeeder::class));
+        $codigos = Producto::pluck('codigo', 'id');
+        $this->seed(ProductoSeeder::class);
+
+        $precio = fn (string $nombre) => (string) Producto::where('nombre', $nombre)->value('precio_venta');
+
+        expect(Producto::count())->toBe(50)
+            ->and($codigos->filter()->unique())->toHaveCount(50)
+            ->and(Producto::pluck('codigo', 'id'))->toEqual($codigos)
+            ->and(Producto::where('stock_actual', '!=', 0)->count())->toBe(0)
+            ->and($precio('Helado de Coco'))->toBe('4500.00')
+            ->and($precio('Helado de Arequipe'))->toBe('4000.00')
+            ->and($precio('Limonada'))->toBe('7000.00')
+            ->and($precio('Agua con Gas'))->toBe('2500.00')
+            ->and($precio('Aceite de Coco 1 Litro'))->toBe('95000.00')
+            ->and(Producto::where('precio_venta', '<', config('mundococo.precio_venta_min'))
+                ->orWhere('precio_venta', '>', config('mundococo.precio_venta_max'))->count())->toBe(0);
+    });
+});
+
+describe('RF11 retiros de efectivo (consignaciones)', function () {
+    it('un retiro descuenta del saldo teórico pero no cuenta como gasto', function () {
+        $this->seed(MetodoPagoSeeder::class);
+        $producto = Producto::factory()->create(['precio_venta' => '50000.00', 'stock_actual' => 20]);
+        app(VentaService::class)->crear(['metodo_pago_id' => MetodoPago::where('nombre', MetodoPago::EFECTIVO)->value('id')], [['producto_id' => $producto->id, 'cantidad' => 10]]);
+        $caja = app(CajaService::class)->abrir(['fecha' => today(), 'saldo_inicial' => '150000']);
+
+        Gasto::factory()->create(['fecha' => today(), 'categoria' => 'materia_prima', 'monto' => '11900']);
+        Gasto::factory()->create(['fecha' => today(), 'categoria' => Gasto::RETIRO, 'descripcion' => 'Consignación', 'monto' => '300000']);
+
+        $caja->refresh();
+        expect((string) $caja->total_gastos)->toBe('11900.00')
+            ->and((string) $caja->total_retiros)->toBe('300000.00')
+            ->and((string) $caja->saldo_teorico)->toBe('338100.00');
+
+        $flujo = app(ReporteService::class)->flujoCajaDiario(today());
+        expect($flujo['gastos_total'])->toBe('11900.00')
+            ->and($flujo['gastos_count'])->toBe(1)
+            ->and($flujo['retiros_total'])->toBe('300000.00')
+            ->and($flujo['saldo_teorico'])->toBe('338100.00');
+
+        $cerrada = app(CajaService::class)->cerrar($caja, ['saldo_real' => '338100']);
+        expect((string) $cerrada->diferencia)->toBe('0.00');
+    });
+});
+
+describe('Cierre con conteo físico (planilla de inventario final)', function () {
+    it('registra sobrantes y faltantes como ajustes trazables y no toca lo no contado', function () {
+        $svc = app(InventarioService::class);
+        [$a, $b, $c] = collect([10, 5, 3])->map(function (int $stock) use ($svc) {
+            $producto = Producto::factory()->create(['stock_actual' => 0]);
+            $svc->registrarInicial($producto, $stock);
+
+            return $producto;
+        })->all();
+
+        $filas = $svc->registrarConteo([$a->id => 8, $b->id => '7', $c->id => ''], observaciones: 'Turno tarde');
+        $ultimo = fn (Producto $producto) => MovimientoInventario::where('producto_id', $producto->id)->latest('id')->first();
+
+        expect($filas)->toHaveCount(2)
+            ->and($a->fresh()->stock_actual)->toBe(8)
+            ->and($b->fresh()->stock_actual)->toBe(7)
+            ->and($c->fresh()->stock_actual)->toBe(3)
+            ->and($ultimo($a)->tipo)->toBe(MovimientoInventario::TIPO_AJUSTE_NEGATIVO)
+            ->and($ultimo($a)->cantidad)->toBe(2)
+            ->and($ultimo($a)->motivo)->toBe('Conteo físico: faltante')
+            ->and($ultimo($b)->tipo)->toBe(MovimientoInventario::TIPO_AJUSTE_POSITIVO)
+            ->and($ultimo($b)->cantidad)->toBe(2)
+            ->and($svc->inconsistenciasStock())->toHaveCount(0);
+
+        // Un conteo igual al sistema no genera movimiento.
+        $antes = MovimientoInventario::count();
+        $svc->registrarConteo([$a->id => 8]);
+        expect(MovimientoInventario::count())->toBe($antes);
+    });
+
+    it('en modo inicial fija el stock con movimientos "inicial" (RF02)', function () {
+        $producto = Producto::factory()->create(['stock_actual' => 0]);
+        $svc = app(InventarioService::class);
+
+        $svc->registrarConteo([$producto->id => 12], esInicial: true);
+
+        expect($producto->fresh()->stock_actual)->toBe(12)
+            ->and($svc->calcularStockTotal($producto))->toBe(12)
+            ->and(MovimientoInventario::where('producto_id', $producto->id)->latest('id')->value('tipo'))->toBe(MovimientoInventario::TIPO_INICIAL);
+    });
+
+    it('rechaza conteos negativos, decimales o vacíos sin modificar nada', function () {
+        $producto = Producto::factory()->create(['stock_actual' => 0]);
+        $svc = app(InventarioService::class);
+
+        foreach ([[$producto->id => -1], [$producto->id => '2.5'], [$producto->id => ''], []] as $conteos) {
+            expect(fn () => $svc->registrarConteo($conteos))->toThrow(ValidationException::class);
+        }
+        expect(MovimientoInventario::where('producto_id', $producto->id)->count())->toBe(0);
+    });
+
+    it('el Administrador registra desde el panel y el Operario no tiene acceso', function () {
+        $this->seed(RoleSeeder::class);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $producto = Producto::factory()->create(['stock_actual' => 0]);
+        app(InventarioService::class)->registrarInicial($producto, 6);
+
+        $this->actingAs(tap(User::factory()->create())->assignRole('Admin'));
+        Livewire::test(ConteoFisico::class)
+            ->assertSee($producto->nombre)
+            ->set('esInicial', false)
+            ->set("conteos.{$producto->id}", '4')
+            ->call('registrar')
+            ->assertHasNoErrors()
+            ->assertSee('Resultado del último conteo');
+        expect($producto->fresh()->stock_actual)->toBe(4);
+
+        $this->actingAs(tap(User::factory()->create())->assignRole('Operario'))->get('/admin/conteo-fisico')->assertForbidden();
     });
 });

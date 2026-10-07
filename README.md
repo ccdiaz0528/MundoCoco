@@ -37,8 +37,11 @@ php artisan db:seed --class=RoleSeeder         # permisos RF10 (Operador → Ope
 - El precio base sale del servidor; el vendedor puede aplicar otro precio (RF04) solo dentro del rango configurado ($2.000–$95.000) y queda auditado. Subtotal y total los calcula siempre el servidor.
 - El stock se valida y descuenta dentro de transacciones con bloqueo de filas; todo cambio genera un movimiento trazable (RF12) y un registro de auditoría.
 - Una caja abierta acumula ventas de `fecha_venta`, separadas por Efectivo, Nequi, Transferencia y Tarjeta; al cerrar, se registra el dinero contado y la diferencia.
+- Los retiros de efectivo (consignaciones, entregas al dueño) se registran en Gastos con la categoría "Retiro / consignación": descuentan del saldo de caja pero no cuentan como gasto.
+- El inventario final se hace en **Conteo físico**: se digita lo contado y el sistema registra sobrantes y faltantes como ajustes trazables. El primer conteo se marca como inventario inicial.
 - No se permiten ventas, ediciones ni anulaciones sobre fechas con caja cerrada.
 - Las ventas y cajas no se borran. Una venta se corrige editándola o se **anula** (devuelve el stock y sale de caja y reportes); los productos se eliminan de forma lógica y se pueden restaurar.
+- La aplicación usa la hora de Cali (`APP_TIMEZONE=America/Bogota`): la caja se cuadra por fecha y con UTC las ventas de la noche caerían en el día siguiente.
 - Roles (RF10): Administrador (todo), Operario (ventas y consulta de inventario), Consultor (solo reportes).
 
 ## Calidad
