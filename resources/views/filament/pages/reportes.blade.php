@@ -144,7 +144,7 @@
             </table>
         </x-filament::section>
 
-        <x-filament::section heading="Movimientos de inventario" description="Trazabilidad del {{ $datos['desde'] }} al {{ $datos['hasta'] }} ({{ $datos['movimientos']->count() }} movimientos).">
+        <x-filament::section heading="Movimientos de inventario" description="Trazabilidad del {{ $datos['desde'] }} al {{ $datos['hasta'] }} ({{ $datos['totalMovimientos'] }} movimientos{{ $datos['totalMovimientos'] > $datos['movimientos']->count() ? '; se muestran los '.$datos['movimientos']->count().' más recientes y la descarga incluye todos' : '' }}).">
             @include('filament.pages.partials.descargas', ['tipo' => 'movimientos'] + $rango)
             @if($datos['movimientos']->isEmpty())
                 <p class="rpt-vacio">Sin movimientos en el periodo seleccionado.</p>

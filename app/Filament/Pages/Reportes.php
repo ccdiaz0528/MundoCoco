@@ -26,6 +26,9 @@ class Reportes extends Page
 
     protected string $view = 'filament.pages.reportes';
 
+    /** Filas de movimientos que se dibujan en pantalla (RNF09); la exportación incluye todas. */
+    private const MOVIMIENTOS_EN_PANTALLA = 200;
+
     public ?string $desde = null;
 
     public ?string $hasta = null;
@@ -51,6 +54,7 @@ class Reportes extends Page
         $hasta = $this->hasta ?: Carbon::now()->toDateString();
 
         [$anteriorDesde, $anteriorHasta] = ReporteExportService::periodoAnterior($desde, $hasta);
+        $movimientos = $svc->movimientosPorPeriodo($desde, $hasta);
 
         return [
             'inventarioPorCategoria' => $svc->inventarioPorCategoria(),
@@ -62,7 +66,8 @@ class Reportes extends Page
             'productosMasVendidos' => $svc->productosMasVendidos(5, Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()),
             'flujo' => $svc->flujoCajaDiario($hasta),
             'indicadores' => $svc->indicadores($desde, $hasta),
-            'movimientos' => $svc->movimientosPorPeriodo($desde, $hasta),
+            'movimientos' => $movimientos->take(self::MOVIMIENTOS_EN_PANTALLA),
+            'totalMovimientos' => $movimientos->count(),
             'comparativo' => $svc->comparativoVentas($anteriorDesde, $anteriorHasta, Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()),
             'desde' => $desde,
             'hasta' => $hasta,
