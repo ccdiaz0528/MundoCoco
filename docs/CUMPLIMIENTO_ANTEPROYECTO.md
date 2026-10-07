@@ -1,6 +1,6 @@
 # Cumplimiento del Anteproyecto → Código MundoCoco
 
-> Verificación punto por punto de `DOCS DE PROYECTO/Anteproyecto - Mundo Coco.docx`, `RF y RNF.docx` y
+> Verificación punto por punto de `Anteproyecto - Mundo Coco.docx`, `RF y RNF.docx` y
 > `Solución Sistema de Inventario y Facturación Mundo Coco.docx` contra el código.
 > Cada fila cita dónde está implementado y **qué prueba automática lo demuestra**.
 > Las pruebas de cumplimiento están agrupadas en `tests/Feature/CumplimientoAnteproyectoTest.php`.
@@ -83,6 +83,6 @@ Los documentos del proyecto no coinciden entre sí en tres puntos. Se resolviero
 
 ## 6. Qué queda a cargo del equipo
 
-- **Medir la cobertura (RNF10):** el entorno local no tiene xdebug ni pcov. La medición corre en CI (GitHub Actions con pcov). Localmente: instalar pcov o xdebug y ejecutar `composer test:cobertura`.
+- **Medir la cobertura (RNF10):** el entorno local tiene pcov 1.0.12 (PHP 8.5.10): 92,2 % medido el 2026-10-05. El CI (GitHub Actions con pcov) aún no se ha podido ejecutar por un bloqueo de facturación de la cuenta. Para repetir la medición: `composer test:cobertura`.
 - **Actualizar una base existente:** `php artisan migrate`, luego `php artisan db:seed --class=MetodoPagoSeeder` (agrega Nequi) y `php artisan db:seed --class=RoleSeeder` (permisos estrictos de RF10). Los usuarios aceptarán la política de datos en su próximo ingreso.
 - **Validación con usuarios reales (OE4):** las pruebas de usabilidad con el personal de MundoCoco y la medición de indicadores en operación real son actividades del proyecto; el sistema provee los indicadores para registrarlas.

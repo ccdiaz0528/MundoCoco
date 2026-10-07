@@ -48,6 +48,19 @@ npm run build
 
 El administrador inicial se crea con `ADMIN_EMAIL` y `ADMIN_PASSWORD`. Después del primer despliegue se puede borrar `ADMIN_PASSWORD` del `.env`: volver a ejecutar el seeder no cambia la contraseña de un usuario existente.
 
+### Despliegue en producción
+
+Después de instalar, optimizar y calentar el sistema antes de abrirlo al personal:
+
+```powershell
+php artisan optimize            # cachés de configuración, rutas, eventos y vistas
+php artisan filament:optimize   # cachés de componentes e íconos de Filament
+```
+
+Luego conviene recorrer cada pantalla una vez con un usuario. En Windows, si varias personas piden a la vez la primera carga de una pantalla con las vistas aún sin compilar, el servidor puede responder errores 500 transitorios (renombrado simultáneo de las vistas compiladas); con las vistas compiladas no vuelve a ocurrir. Además, el panel limita el inicio de sesión a 5 intentos por minuto desde una misma IP.
+
+PHP: el proyecto exige 8.4 o superior (`composer.json`); se desarrolló y midió con 8.5.10. Active el programador de tareas del servidor (sección 6) para que el respaldo diario se ejecute.
+
 ### Actualizar una instalación existente
 
 ```powershell

@@ -27,7 +27,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
- * Brechas cerradas frente a "DOCS DE PROYECTO/RF y RNF.docx" y el
+ * Brechas cerradas frente a "RF y RNF.docx" y el
  * anteproyecto. Cada bloque cita el requisito que verifica.
  */
 

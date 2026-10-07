@@ -3,7 +3,7 @@
 > **Documento vivo** - Actualizado en cada fase de implementación
 > Fecha inicio: 2026-09-08 | Fecha cierre: 2026-09-24
 > Objetivo: Cumplimiento 100% del anteproyecto + RF/RNF + buenas prácticas
-> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 161/161 verde | Pint: verde | Vite: verde
+> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 166/166 verde | Pint: verde | Vite: verde
 
 ---
 
@@ -21,7 +21,7 @@
 | 7 | Pruebas funcionales completas + calidad | ✅ | 2026-09-09 | 84 tests, `vendor/bin/pint --test` verde, `npm run build` verde |
 | 8 | Cierre de cumplimiento estricto RF/RNF (auditoría externa) | ✅ | 2026-09-09 | 103 tests, backup real, export PDF/XLSX, código producto, Fase 8 abajo |
 
-**Tests finales:** 161 passed (570 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
+**Tests finales:** 166 passed (585 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
 
 ---
 
@@ -170,7 +170,7 @@ tests/
 - [x] `php artisan migrate --force` 4 nuevas migraciones ok
 
 ### FASE 8 - Cierre de Cumplimiento Estricto ✅ 2026-09-09
-Auditoría requisito-por-requisito contra `DOCS DE PROYECTO/RF y RNF.docx`. Hallazgos cerrados:
+Auditoría requisito-por-requisito contra `RF y RNF.docx`. Hallazgos cerrados:
 - [x] RF01 `codigo` único: migración `2026_09_09_000005`, autogeneración en `Producto::booted`, form/tabla/factory, rango precio 2000-95000 en `ProductoForm.php:31` (`ProductoCodigoTest.php` 4 tests)
 - [x] RF04 alerta de mínimo al vender: `VentaService::productosBajoMinimo()` + notificación en `CreateVenta.php:52` (`VentaAlertaStockTest.php` 4 tests)
 - [x] RF06 catálogo exacto: 42 productos (14+13+8+7) — se agregaron Limonada Natural, Agua Natural, Agua con Gas, Galón de Leche de Coco
@@ -196,7 +196,7 @@ Auditoría interna de buenas prácticas. Hallazgos críticos corregidos:
 
 ### Fase 10 - Cumplimiento del 100 % del anteproyecto (2026-09-24)
 
-Auditoría de `DOCS DE PROYECTO/` contra el código: el documento de cumplimiento anterior marcaba todo como ✅ pero declaraba 6 desviaciones y omitía otras brechas. Se cerraron todas (matriz en `CUMPLIMIENTO_ANTEPROYECTO.md`):
+Auditoría de los documentos del proyecto contra el código: el documento de cumplimiento anterior marcaba todo como ✅ pero declaraba 6 desviaciones y omitía otras brechas. Se cerraron todas (matriz en `CUMPLIMIENTO_ANTEPROYECTO.md`):
 
 - [x] Flujo de ventas unificado: `CreateVenta`/`EditVenta` delegan en `VentaService::crear/actualizar` (antes el panel usaba otro camino sin transacción y sin trazar ediciones)
 - [x] RF04: método **Nequi** (+ Transferencia y Tarjeta del anteproyecto), **fecha y hora de venta**, **precio distinto del base** validado en servidor y auditado
@@ -215,7 +215,7 @@ Auditoría de `DOCS DE PROYECTO/` contra el código: el documento de cumplimient
 - [x] RNF08: SQL con variantes para SQL Server; respaldo portable
 - [x] RNF10: cobertura medida en CI (pcov, `--min=80` sobre código crítico); Ley 1581 con consentimiento informado obligatorio
 - [x] Errores previos encontrados: `CajaForm` usaba `TextInput::color()` (500 al abrir caja), CI con PHP 8.3 incompatible con el `composer.lock` (Symfony 8 exige 8.4), manual de usuario truncado
-- [x] Tests 161/161 (570 assertions)
+- [x] Tests 166/166 (585 assertions)
 
 ---
 
@@ -267,7 +267,7 @@ Auditoría de `DOCS DE PROYECTO/` contra el código: el documento de cumplimient
 composer install
 php artisan migrate --seed # categorías RF06 42 productos
 vendor/bin/pint --test # verde
-php artisan test # 161 passed
+php artisan test # 166 passed
 npm ci; npm run build # 54 modules 1.31s
 php artisan serve # /admin
 # Reportes: /admin/reportes + /reportes/export/{tipo}/{csv,pdf,xlsx}
@@ -281,6 +281,6 @@ php artisan serve # /admin
 - Anteproyecto: Helados 14 sabores, Bebidas 13, Aceites 8, Coco 7 (Pág 1-2, RF06)
 - Legal: Ley 23/603/1581/1377/1266/527 (Pág 6-7) → `privacidad.blade.php`
 - Scrum: `quality.yml` CI push/PR PHP 8.4 + Node 20
-- RF y RNF: 12+10 en `DOCS DE PROYECTO/RF y RNF.docx` → `CUMPLIMIENTO_ANTEPROYECTO.md`
+- RF y RNF: 12+10 en `RF y RNF.docx` → `CUMPLIMIENTO_ANTEPROYECTO.md`
 ```
 

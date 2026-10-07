@@ -25,3 +25,6 @@ Homestead.yaml
 Thumbs.db
 
 /DOCS DE PROYECTO/
+
+# Configuración local del asistente
+/.claude/

@@ -30,7 +30,7 @@ composer test            # = php artisan config:clear --ansi && php artisan test
 npm run build            # must pass; CI runs npm ci + build
 ```
 - CI `.github/workflows/quality.yml` on `push`/`pull_request`: PHP 8.4 (pcov) + Node 20, `composer install` -> `pint --test` -> `php artisan test` -> coverage `--min=80` on critical code -> `npm ci && npm run build`.
-- RNF10 coverage locally: `composer test:cobertura` (`phpunit.cobertura.xml`, critical dirs only). Needs pcov/xdebug - not installed in this dev environment.
+- RNF10 coverage locally: `composer test:cobertura` (`phpunit.cobertura.xml`, critical dirs only). Needs pcov/xdebug (pcov 1.0.12 is installed locally; last measurement 92.2 %).
 - Full style fix: `vendor/bin/pint` (no `pint.json` - uses Laravel preset, PSR-12, `.editorconfig` 4 spaces/LF, yaml 2 spaces).
 
 ## Single Test / Focused Run
@@ -63,7 +63,7 @@ php artisan test tests/Feature/CumplimientoAnteproyectoTest.php
 - **RF05**: `InventarioService::stockCalculado` counts only movements since the product's last `inicial` (an `inicial` *sets* stock, it doesn't add).
 - Sales/cajas never deleted. Correct with edit, or `VentaService::anular` (returns stock as `devolucion`, excluded via `vigentes()`, audited).
 
-## Dominio (proyecto de grado - `DOCS DE PROYECTO/RF y RNF.docx` manda)
+## Dominio (proyecto de grado - `RF y RNF.docx` manda; los documentos académicos están fuera del repo, ver Referencias)
 - RF06: 4 categorías con nombres exactos (`Helados/Bebidas/Aceites/Productos de Coco`, `CategoriaSeeder.php`); `SimulacionRealMundoCocoTest` rechaza `Postres/Ingredientes`. No renombrar.
 - RF01: precios de venta en el rango de `config/mundococo.php` ($2.000–$95.000) en `ProductoForm` (factories use synthetic values, exempt; a sale at the base price is always accepted); `codigo` único autogenerado.
 - Sin desviaciones declaradas: conflictos entre documentos resueltos en `docs/CUMPLIMIENTO_ANTEPROYECTO.md` §1 (4 métodos de pago con Nequi; precio editable con límites; rol `Operario`). Toda función nueva de cumplimiento agrega su prueba en `tests/Feature/CumplimientoAnteproyectoTest.php`.
@@ -76,4 +76,4 @@ php artisan test tests/Feature/CumplimientoAnteproyectoTest.php
 - SQLite stores `date` casts as `Y-m-d 00:00:00`: filter dates with `whereDate`, not `whereBetween` on date strings.
 
 ## References
-- `README.md` (install + operational rules), `docs/MANUAL_TECNICO.md` (config, API, backup, roles), `docs/MANUAL_USUARIO.md`, `docs/IMPLEMENTACION.md` (phase plan), `docs/TESTING_REPORT.md` (invariants), `docs/CUMPLIMIENTO_ANTEPROYECTO.md` (requirement → code → test matrix; read before changing business rules), `quality.yml` (CI contract). Requisitos autoritativos: `DOCS DE PROYECTO/Anteproyecto - Mundo Coco.docx`, `DOCS DE PROYECTO/RF y RNF.docx` (12 RF + 10 RNF) y `DOCS DE PROYECTO/Solución Sistema de Inventario y Facturación Mundo Coco.docx`. Prefer executable config (`composer.json` scripts, `phpunit.xml`, `vite.config.js`) when docs conflict.
+- `README.md` (install + operational rules), `docs/MANUAL_TECNICO.md` (config, API, backup, roles), `docs/MANUAL_USUARIO.md`, `docs/IMPLEMENTACION.md` (phase plan), `docs/TESTING_REPORT.md` (invariants), `docs/CUMPLIMIENTO_ANTEPROYECTO.md` (requirement → code → test matrix; read before changing business rules), `quality.yml` (CI contract). Requisitos autoritativos: `Anteproyecto - Mundo Coco.docx`, `RF y RNF.docx` (12 RF + 10 RNF) y `Solución Sistema de Inventario y Facturación Mundo Coco.docx`. Estos documentos viven fuera del repo en `C:\Users\Ryzen 5\Documents\MundoCoco - Documentación\03 Anteproyecto y requisitos`. Prefer executable config (`composer.json` scripts, `phpunit.xml`, `vite.config.js`) when docs conflict.

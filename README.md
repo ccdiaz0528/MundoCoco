@@ -62,4 +62,4 @@ Cada cambio se valida en GitHub Actions con estilo, pruebas, cobertura y compila
 - `database/migrations/`: estructura e índices de base de datos.
 - `tests/`: pruebas de reglas de negocio y flujos; `tests/Feature/CumplimientoAnteproyectoTest.php` verifica el anteproyecto.
 - `docs/`: `MANUAL_USUARIO.md`, `MANUAL_TECNICO.md`, `CUMPLIMIENTO_ANTEPROYECTO.md`, `IMPLEMENTACION.md`, `TESTING_REPORT.md`.
-- `DOCS DE PROYECTO/`: entregables académicos (anteproyecto, RF/RNF, presentaciones).
+- Los entregables académicos (anteproyecto, RF/RNF, trabajo de grado, manuales y presentaciones) viven fuera del repositorio, en `Documentos\MundoCoco - Documentación`.

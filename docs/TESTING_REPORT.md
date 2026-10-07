@@ -1,11 +1,11 @@
 # Estrategia de pruebas - MundoCoco
 
-La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **161 tests (570 assertions)**, 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **166 tests (585 assertions)** en 15,55 s, 100% verde. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
-## Estado Actual 2026-09-24
+## Estado Actual 2026-10-05
 
 ```
-PASS 161 tests (570 assertions)
+PASS 166 tests (585 assertions)
 vendor/bin/pint --test : verde (PSR-12)
 ```
 
@@ -61,6 +61,8 @@ npm ci; npm run build    # Vite 8 + Tailwind 4
 
 CI: PHP 8.4 (pcov) + Node 20, `composer install` -> `pint --test` -> `php artisan test` -> cobertura `--min=80` -> `npm ci && npm run build`
 
+Nota (2026-10-05): las ejecuciones de GitHub Actions del 2026-09-09, 09-24 y 09-25 no llegaron a iniciarse ("The job was not started because your account is locked due to a billing issue"), así que no hay evidencia de ejecución en PHP 8.4. Toda la verificación se ejecutó localmente con PHP 8.5.10; al resolver la facturación el flujo correrá en 8.4.
+
 ## Casos Críticos que Deben Mantenerse (Invariantes Anteproyecto)
 
 - Venta nunca deja stock negativo, incluso con líneas duplicadas agrupadas (`VentaService::bloquearYValidarProductos`, `agruparCantidades`)
@@ -78,7 +80,7 @@ CI: PHP 8.4 (pcov) + Node 20, `composer install` -> `pint --test` -> `php artisa
 
 `tests/Feature/CumplimientoAnteproyectoTest.php` agrupa una prueba por brecha cerrada (Nequi, precio y fecha de venta, roles RF10, anulación, borrado lógico, RF02/RF03/RF05, reportes e indicadores OE4, Ley 1581, RNF07 sucursal y API, humo de todas las pantallas del panel). La matriz requisito → código → prueba está en `docs/CUMPLIMIENTO_ANTEPROYECTO.md`.
 
-RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xml`, solo código crítico, mínimo 80 %) en CI con pcov; el entorno local no tiene driver de cobertura.
+RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xml`, solo código crítico, mínimo 80 %) con pcov. Medición local (2026-10-05, PHP 8.5.10, pcov 1.0.12): **92,2 %** (847 de 918 líneas ejecutables) sobre el código crítico.
 
 ## Nuevos Tests Añadidos 2026-09-09
 
@@ -105,10 +107,21 @@ RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xm
 
 ## Cobertura RNF10
 
-Histórico: hasta el 2026-09-09 el CI usaba `coverage: none` y la cobertura nunca se midió. Desde el 2026-09-24 el CI instala pcov y exige `--min=80` sobre el código crítico (`phpunit.cobertura.xml`). Localmente no hay driver de cobertura.
+Histórico: hasta el 2026-09-09 el CI usaba `coverage: none` y la cobertura nunca se midió. Desde el 2026-09-24 el CI instala pcov y exige `--min=80` sobre el código crítico (`phpunit.cobertura.xml`). Localmente se mide con pcov 1.0.12 (PHP 8.5.10).
 
 ## Métricas RF/RNF vs Tiempo
 
 - RNF01 <3s: simulación jornada 0.09s (incluye 15 ventas + cierre)
 - RNF04 backup diario 02:00 + audit 365d retención (`routes/console.php:10`)
-- RNF10 80% cobertura: se mide en CI (pcov) con `phpunit.cobertura.xml`; no hay una cifra medida localmente
+- RNF10 80% cobertura: 92,2 % medido localmente con pcov (`phpunit.cobertura.xml`, 2026-10-05); el CI no ha podido ejecutarse (facturación de GitHub)
+
+## Verificación de RNF contra un servidor real (2026-10-05)
+
+Medido en un entorno aislado (copia del proyecto con su propia base MySQL 8.4.3 descartable, Apache 2.4.68 con PHP 8.5.10, Chrome 154 automatizado con Puppeteer), con 200 productos y 2.812 a 3.800 movimientos:
+
+- **RNF01 (5 usuarios simultáneos):** 5 sesiones (1 Admin, 3 Operario, 1 Consultor) × 3 rondas × 5–8 pantallas = 75 cargas por ejecución, más 5 procesos registrando 20 ventas cada uno (10 en disputa por 30 unidades de un producto). Tras corregir la página de reportes: mediana 241–269 ms, p95 864–1.012 ms, máximo 909–1.207 ms, 0 errores. Ventas: 80 registradas y 20 rechazadas por stock por ejecución, 0 errores, máximo 210 ms; sin stock negativo ni cadenas de movimientos rotas.
+- **Hallazgo corregido:** `/admin/reportes` tardaba 2,4–3,0 s (hasta 3,4 s) por dibujar todos los movimientos del periodo; ahora muestra los 200 más recientes (`Reportes::MOVIMIENTOS_EN_PANTALLA`), informa el total y la exportación sigue completa (≈0,9–1,0 s).
+- **RNF09 (BD < 100 MB):** 0,89 MB inicial (25 tablas, 42 productos); 3,13 MB con 200 productos y 2.812 movimientos.
+- **RNF04 (sesión de 2 h):** con `SESSION_DRIVER=database`, sesión activa a los 119 min de inactividad y cerrada (redirige a login) a los 121 min. Además `RequisitosNoFuncionalesTest` verifica `session.lifetime = 120` y bcrypt.
+- **RNF03:** Chrome 154 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox, Edge y Safari NO probados (Edge no está instalado en el equipo de pruebas).
+- **RNF08:** solo MySQL 8.4.3 y SQLite (pruebas); PostgreSQL y SQL Server NO probados.
