@@ -35,16 +35,22 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:60,1'])->group(functi
     Route::get('/ventas', function (Request $request) {
         $rango = Validator::validate($request->only(['desde', 'hasta']), [
             'desde' => ['nullable', 'date_format:Y-m-d'],
-            'hasta' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
         ]);
 
-        return Venta::query()
-            ->with(['metodoPago', 'detalles.producto', 'sucursal'])
-            ->whereBetween('fecha_venta', [
-                ($rango['desde'] ?? now()->subDays(30)->toDateString()).' 00:00:00',
-                ($rango['hasta'] ?? now()->toDateString()).' 23:59:59',
-            ])
-            ->orderBy('fecha_venta')
+        $query = Venta::query()->with(['metodoPago', 'detalles.producto', 'sucursal']);
+
+        // Filtro por fecha con whereDate (SQLite guarda date como Y-m-d 00:00:00).
+        if (! empty($rango['desde'])) {
+            $query->whereDate('fecha_venta', '>=', $rango['desde']);
+        } else {
+            $query->whereDate('fecha_venta', '>=', now()->subDays(30)->toDateString());
+        }
+        if (! empty($rango['hasta'])) {
+            $query->whereDate('fecha_venta', '<=', $rango['hasta']);
+        }
+
+        return $query->orderBy('fecha_venta')
             ->get()
             ->map(fn (Venta $v) => [
                 'id' => $v->id,

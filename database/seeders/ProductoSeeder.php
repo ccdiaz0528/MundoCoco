@@ -68,7 +68,12 @@ class ProductoSeeder extends Seeder
         ];
 
         foreach ($productos as $producto) {
-            Producto::create($producto);
+            // Idempotente: no duplica si se re-ejecuta; respeta SoftDeletes y
+            // no sobrescribe stock/codigo existentes (RF06).
+            Producto::withTrashed()->firstOrCreate(
+                ['nombre' => $producto['nombre'], 'categoria_id' => $producto['categoria_id']],
+                $producto
+            );
         }
     }
 }
