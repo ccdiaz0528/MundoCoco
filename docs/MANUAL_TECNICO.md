@@ -67,13 +67,13 @@ PHP: el proyecto exige 8.4 o superior (`composer.json`); se desarrolló con 8.5.
 
 ### Despliegue de demostración en la nube (no es producción)
 
-Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del ) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito). No debe usarse con datos reales de la tienda.
+Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del `Dockerfile`) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito). No debe usarse con datos reales de la tienda.
 
-- Archivos: ,  (al arrancar ejecuta , idempotente, y deja las cachés de Laravel y Filament) y  (Blueprint con las variables de entorno).
-- Variables que se definen en el panel de Render (no están en el repositorio): , , , , , ,  y . La conexión a TiDB exige TLS (, ya definida en ) y usa el puerto 4000.
--  hace que Laravel confíe en el proxy HTTPS del hosting (); sin la variable no cambia nada.
+- Archivos: `Dockerfile`, `docker/entrypoint.sh` (al arrancar ejecuta `migrate --force --seed`, idempotente, y deja las cachés de Laravel y Filament) y `render.yaml` (Blueprint con las variables de entorno).
+- Variables que se definen en el panel de Render (no están en el repositorio): `APP_KEY`, `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. La conexión a TiDB exige TLS (`MYSQL_ATTR_SSL_CA`, ya definida en `render.yaml`) y usa el puerto 4000.
+- `TRUSTED_PROXIES=*` hace que Laravel confíe en el proxy HTTPS del hosting (`bootstrap/app.php`); sin la variable no cambia nada.
 - Límites del plan gratuito: el servicio se duerme tras unos 15 minutos sin uso y al despertar tarda cerca de un minuto en responder; el sistema de archivos no persiste entre reinicios (los datos viven en la base externa, y los respaldos en disco no se conservan). La tarea programada de respaldo no corre en este entorno.
-- Despliegue: cada  a  redespliega automáticamente.
+- Despliegue: cada `git push` a `main` redespliega automáticamente.
 
 ### Actualizar una instalación existente
 
