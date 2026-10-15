@@ -85,7 +85,7 @@ class VentaForm
                                         $total = collect($items)->sum(fn ($i) => floatval($i['subtotal'] ?? 0));
                                         $set('../../total', $total);
                                     })
-                                    ->columnSpanFull(), // ✅ ocupa toda la fila
+                                    ->columnSpanFull(),
 
                                 // Fila 2: cantidad | precio | subtotal
                                 TextInput::make('cantidad')
@@ -128,7 +128,7 @@ class VentaForm
                                     ->readOnly()
                                     ->dehydrated(false),
                             ])
-                            ->columns(3) // ✅ fila 2 queda en 3 columnas iguales
+                            ->columns(3)
                             ->addActionLabel('+ Agregar producto')
                             ->minItems(1)
                             ->live()

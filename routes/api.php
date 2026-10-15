@@ -1,11 +1,9 @@
 <?php
 
-use App\Models\Producto;
-use App\Models\Venta;
-use App\Services\ReporteExportService;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\V1\ProductoController;
+use App\Http\Controllers\Api\V1\ReporteController;
+use App\Http\Controllers\Api\V1\VentaController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Validator;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,71 +14,7 @@ use Illuminate\Support\Facades\Validator;
 */
 
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
-    Route::get('/productos', fn () => Producto::query()
-        ->with('categoria')
-        ->where('activo', true)
-        ->orderBy('nombre')
-        ->get()
-        ->map(fn (Producto $p) => [
-            'id' => $p->id,
-            'codigo' => $p->codigo,
-            'nombre' => $p->nombre,
-            'categoria' => $p->categoria?->nombre,
-            'precio_venta' => (string) $p->precio_venta,
-            'stock_actual' => $p->stock_actual,
-            'stock_minimo' => $p->stock_minimo,
-            'stock_bajo' => $p->stockBajo(),
-        ]))->middleware('can:ver productos');
-
-    Route::get('/ventas', function (Request $request) {
-        $rango = Validator::validate($request->only(['desde', 'hasta']), [
-            'desde' => ['nullable', 'date_format:Y-m-d'],
-            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
-        ]);
-
-        $query = Venta::query()->with(['metodoPago', 'detalles.producto', 'sucursal']);
-
-        // Filtro por fecha con whereDate (SQLite guarda date como Y-m-d 00:00:00).
-        if (! empty($rango['desde'])) {
-            $query->whereDate('fecha_venta', '>=', $rango['desde']);
-        } else {
-            $query->whereDate('fecha_venta', '>=', now()->subDays(30)->toDateString());
-        }
-        if (! empty($rango['hasta'])) {
-            $query->whereDate('fecha_venta', '<=', $rango['hasta']);
-        }
-
-        return $query->orderBy('fecha_venta')
-            ->get()
-            ->map(fn (Venta $v) => [
-                'id' => $v->id,
-                'fecha_venta' => $v->fecha_venta->toIso8601String(),
-                'sucursal' => $v->sucursal?->nombre,
-                'metodo_pago' => $v->metodoPago?->nombre,
-                'total' => (string) $v->total,
-                'anulada' => $v->anulada(),
-                'detalles' => $v->detalles->map(fn ($d) => [
-                    'producto' => $d->producto?->nombre,
-                    'cantidad' => $d->cantidad,
-                    'precio_unitario' => (string) $d->precio_unitario,
-                    'subtotal' => (string) $d->subtotal,
-                ]),
-            ]);
-    })->middleware('can:ver ventas');
-
-    // Cualquier reporte de RF08/RF09/RF11 en JSON (mismos datos que PDF/Excel).
-    Route::get('/reportes/{tipo}', function (Request $request, string $tipo, ReporteExportService $exportador) {
-        abort_unless(array_key_exists($tipo, ReporteExportService::TIPOS), 404);
-        $rango = Validator::validate($request->only(['desde', 'hasta']), [
-            'desde' => ['nullable', 'date_format:Y-m-d'],
-            'hasta' => ['nullable', 'date_format:Y-m-d'],
-        ]);
-        [$encabezados, $filas] = $exportador->datos($tipo, $rango['desde'] ?? now()->subDays(30)->toDateString(), $rango['hasta'] ?? now()->toDateString());
-
-        return [
-            'reporte' => ReporteExportService::TIPOS[$tipo],
-            'columnas' => $encabezados,
-            'filas' => $filas,
-        ];
-    })->middleware('can:ver reportes');
+    Route::get('/productos', [ProductoController::class, 'index'])->middleware('can:ver productos');
+    Route::get('/ventas', [VentaController::class, 'index'])->middleware('can:ver ventas');
+    Route::get('/reportes/{tipo}', [ReporteController::class, 'show'])->middleware('can:ver reportes');
 });

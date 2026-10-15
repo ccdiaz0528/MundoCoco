@@ -59,8 +59,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
-                AccountWidget::class,           // ✅ solo el widget de cuenta
-                // FilamentInfoWidget eliminado  // ✅ quita el bloque de filament v5.5.0
+                // Solo el widget de cuenta; se omite FilamentInfoWidget.
+                AccountWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
