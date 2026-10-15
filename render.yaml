@@ -1,0 +1,51 @@
+# Blueprint de Render (plan gratuito, solo PRUEBA). La base de datos MySQL es externa
+# (p. ej. TiDB Cloud Serverless gratis); sus datos se cargan como variables en el panel.
+services:
+  - type: web
+    name: mundococo-demo
+    runtime: docker
+    plan: free
+    healthCheckPath: /up
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false   # pegar la salida de: php artisan key:generate --show
+      - key: APP_URL
+        sync: false
+      - key: APP_TIMEZONE
+        value: America/Bogota
+      - key: APP_LOCALE
+        value: es
+      - key: TRUSTED_PROXIES
+        value: "*"
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MYSQL_ATTR_SSL_CA
+        value: /etc/ssl/certs/ca-certificates.crt
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: ADMIN_NAME
+        value: Administrador
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

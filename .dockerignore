@@ -1,0 +1,11 @@
+.git
+.github
+.claude
+.env
+node_modules
+vendor
+public/build
+storage/logs/*
+storage/framework/*/*
+phpunit.cobertura.xml
+tests
