@@ -65,6 +65,16 @@ Zona horaria: `APP_TIMEZONE=America/Bogota` (`config/app.php`; por defecto ya es
 
 PHP: el proyecto exige 8.4 o superior (`composer.json`); se desarrolló con 8.5.10 y su suite y cobertura se verificaron también con 8.4.26. Active el programador de tareas del servidor (sección 6) para que el respaldo diario se ejecute.
 
+### Despliegue de demostración en la nube (no es producción)
+
+Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del ) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito). No debe usarse con datos reales de la tienda.
+
+- Archivos: ,  (al arrancar ejecuta , idempotente, y deja las cachés de Laravel y Filament) y  (Blueprint con las variables de entorno).
+- Variables que se definen en el panel de Render (no están en el repositorio): , , , , , ,  y . La conexión a TiDB exige TLS (, ya definida en ) y usa el puerto 4000.
+-  hace que Laravel confíe en el proxy HTTPS del hosting (); sin la variable no cambia nada.
+- Límites del plan gratuito: el servicio se duerme tras unos 15 minutos sin uso y al despertar tarda cerca de un minuto en responder; el sistema de archivos no persiste entre reinicios (los datos viven en la base externa, y los respaldos en disco no se conservan). La tarea programada de respaldo no corre en este entorno.
+- Despliegue: cada  a  redespliega automáticamente.
+
 ### Actualizar una instalación existente
 
 ```powershell

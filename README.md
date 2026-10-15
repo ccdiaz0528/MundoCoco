@@ -24,6 +24,10 @@ php artisan serve
 
 El panel está disponible en `/admin`. El usuario administrador se crea con `AdminUserSeeder` a partir de `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` (sin esas variables no se crea nadie, por seguridad). En el primer ingreso cada usuario debe aceptar la política de tratamiento de datos (Ley 1581).
 
+### Demo en la nube (solo pruebas)
+
+Despliegue gratuito de demostración, no apto para datos reales: https://mundococo-demo.onrender.com/admin/login (Render + TiDB Cloud; ver `docs/MANUAL_TECNICO.md`, sección 3). El primer acceso tras un periodo de inactividad tarda cerca de un minuto.
+
 ### Actualizar una base existente
 
 ```powershell
