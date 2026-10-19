@@ -22,6 +22,7 @@ php artisan serve  # admin at /admin
 - Dev all-in-one: `composer dev` (`composer.json`) runs `serve` + `queue:listen --tries=1` + `vite` via `concurrently`.
 - Vite watches ignore `storage/framework/views/**` (`vite.config.js`).
 - **Careful**: `php artisan install:*` commands run pending migrations against the `.env` database.
+- Cloud demo (test only, not production): `Dockerfile` + `docker/entrypoint.sh` (runs `migrate --force --seed` on boot) + `render.yaml`; every push to `main` redeploys https://mundococo-demo.onrender.com. Details in `docs/MANUAL_TECNICO.md` §3.
 
 ## Verification - run in this order (mirrors CI `quality.yml`)
 ```powershell
@@ -51,7 +52,7 @@ php artisan test tests/Feature/CumplimientoAnteproyectoTest.php
 - `app/Policies/`: check **permissions** (`$user->can('ver ventas')`), never role names; `database/seeders/RoleSeeder.php` is the single source of truth. RF10 strict: `Admin` = all; `Operario` = ver/crear/editar ventas + ver productos/categorias/movimientos; `Consultor` = ver/exportar reportes. `User implements FilamentUser` (`canAccessPanel` = has any role) - without it production returns 403 to everyone.
 - `database/migrations/`: `2026_09_24_000001..000008` add `caja.total_nequi`, `venta_detalles.precio_base`, role rename Operador→Operario, sale annulment (`ventas.anulada_at/anulada_por/motivo_anulacion`), `productos.deleted_at`, `movimientos_inventario.fecha_movimiento`, `users.politica_aceptada_at`, `sucursales` + `sucursal_id`. Reference data (Nequi, permissions) comes from idempotent seeders, not migrations.
 - Ley 1581: `App\Http\Middleware\ExigirConsentimientoDatos` (panel auth middleware) redirects users without `politica_aceptada_at` to `ConsentimientoDatos`. `UserFactory` accepts by default; use `->sinConsentimiento()` to test the flow.
-- `routes/web.php`: `/privacidad` view + `/login`→`/admin/login` + `/reportes/export/{tipo}/{csv,pdf,xlsx}` via `ReporteExportService` (middleware `auth` + `can:exportar reportes`; `desde`/`hasta` validated `Y-m-d`, invalid → 422). `routes/api.php` (RNF07): `/api/v1/{productos,ventas,reportes/{tipo}}`, `auth:sanctum` + `can:` per route; tokens via `php artisan mundococo:token-api {email}`. `routes/console.php` schedules real `backup:database` (SQL dump to `storage/app/backups`, 30d retention) + audit cleanup >365d; `config/session.php` (120 min lifetime).
+- `routes/web.php`: `/privacidad` view + `/login`→`/admin/login` + `/reportes/export/{tipo}/{csv,pdf,xlsx}` via `ReporteExportService` (middleware `auth` + `can:exportar reportes`; `desde`/`hasta` validated `Y-m-d`, invalid → 422). `routes/api.php` (RNF07): `/api/v1/{productos,ventas,reportes/{tipo}}` → `app/Http/Controllers/Api/V1/{Producto,Venta,Reporte}Controller`, `auth:sanctum` + `can:` per route; tokens via `php artisan mundococo:token-api {email}`. `routes/console.php` schedules real `backup:database` (SQL dump to `storage/app/backups`, 30d retention) + audit cleanup >365d; `config/session.php` (120 min lifetime).
 - Timezone: `config/app.php` uses `APP_TIMEZONE` (default `America/Bogota`, UTC-5). Caja is by date, so UTC would push sales after 7 p. m. to the next day; do not revert it (tests in `CumplimientoAnteproyectoTest`, "Zona horaria").
 - `config/mundococo.php` (RNF06): `precio_venta_min/max`, `factor_reorden`, `contacto_datos`, `admin_*` - read these instead of hardcoding.
 

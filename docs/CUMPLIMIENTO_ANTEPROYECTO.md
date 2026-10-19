@@ -5,7 +5,7 @@
 > Cada fila cita dónde está implementado y **qué prueba automática lo demuestra**.
 > Las pruebas de cumplimiento están agrupadas en `tests/Feature/CumplimientoAnteproyectoTest.php`.
 >
-> Última revisión: 24/09/2026 — 0 desviaciones declaradas.
+> Última revisión: 16/10/2026 — 0 desviaciones declaradas.
 
 ---
 
@@ -50,7 +50,7 @@ Los documentos del proyecto no coinciden entre sí en tres puntos. Se resolviero
 | **RNF04** Seguridad | Login, bcrypt, sesión 2 h, **auditoría de ventas y cambios de inventario**, backup diario | `User` (`hashed`), `SESSION_LIFETIME=120`, `AuditService` en ventas, ediciones, anulaciones, precios modificados, **todo cambio de stock**, cierres de caja; pantalla **Auditoría** (solo lectura); `backup:database` diario | `BackupDatabaseTest`, `RF03 … y audita`, `Pantallas del panel (humo)` |
 | **RNF05** Confiabilidad | ACID, backup 24 h, validación cliente y servidor, mensajes claros | `DB::transaction(…, 3)` + `lockForUpdate`; panel con `->databaseTransactions()`; validación en formularios y en servicios | `VentasPanelTest` (nada a medias), `VentaServiceTest` |
 | **RNF06** Mantenibilidad | Documentación, patrones, **parámetros configurables**, logs | Servicios + policies + observers; `config/mundococo.php` (precios, reorden, contacto de datos); `docs/MANUAL_TECNICO.md` | `RF07: … factor configurable`, `rechaza un precio fuera del rango configurado` |
-| **RNF07** Escalabilidad | Crecimiento, nuevos módulos, **múltiples sucursales**, **integración externa** | Modelo `Sucursal` (ventas, cajas, gastos y movimientos ligados a una sucursal; hoy la principal); **API REST v1** de solo lectura con tokens Sanctum | Bloque `RNF07 escalabilidad…` |
+| **RNF07** Escalabilidad | Crecimiento, nuevos módulos, **múltiples sucursales**, **integración externa** | Modelo `Sucursal` (ventas, cajas, gastos y movimientos ligados a una sucursal; hoy la principal); **API REST v1** de solo lectura con tokens Sanctum (`app/Http/Controllers/Api/V1/`) | Bloque `RNF07 escalabilidad…` |
 | **RNF08** Portabilidad | MySQL, PostgreSQL o SQL Server | SQL propio con variantes por motor (`ReporteService::expresionFecha`, `GROUP BY` por expresión); respaldo portable | Suite completa (SQLite) + desarrollo en MySQL |
 | **RNF09** Eficiencia | < 2 s de carga, BD inicial < 100 MB | Assets compilados con Vite; consultas agregadas | `npm run build` |
 | **RNF10** Cumplimiento | Ley de datos, W3C, patrones, **≥ 80 % de cobertura en funciones críticas** | Consentimiento Ley 1581 (ver §5); `phpunit.cobertura.xml` mide servicios, dinero, observers, policies, middleware y modelos; CI exige `--min=80` | Paso "Coverage of critical code (RNF10)" en `.github/workflows/quality.yml` |
@@ -75,7 +75,6 @@ Los documentos del proyecto no coinciden entre sí en tres puntos. Se resolviero
 | Norma | Implementación |
 |---|---|
 | Ley 1581 de 2012 / Decreto 1377 de 2013 | Política pública en `/privacidad`, enlazada desde el login; **consentimiento informado obligatorio** antes de operar (`ExigirConsentimientoDatos` + página `ConsentimientoDatos`), con fecha (`users.politica_aceptada_at`) y registro en auditoría; canal de habeas data configurable (`CONTACTO_DATOS`). Pruebas: bloque `Ley 1581…`. |
-| Ley 1266 de 2008 | Registros financieros (ventas, gastos, caja) solo visibles según rol; auditoría de operaciones. |
 | Ley 527 de 1999 | Reportes y registros electrónicos exportables (PDF/Excel) con fecha de generación. |
 | Ley 23 de 1982 / Ley 603 de 2000 | Dependencias con licencia MIT (Laravel, Filament, Sanctum, DomPDF, PhpSpreadsheet), declaradas en `composer.json`. |
 
@@ -83,6 +82,6 @@ Los documentos del proyecto no coinciden entre sí en tres puntos. Se resolviero
 
 ## 6. Qué queda a cargo del equipo
 
-- **Medir la cobertura (RNF10):** el entorno local tiene pcov 1.0.12: 92,3 % en PHP 8.4.26 (versión declarada) y 92,4 % en PHP 8.5.10, medido el 2026-10-07. El CI (GitHub Actions con pcov) aún no se ha podido ejecutar por un bloqueo de facturación de la cuenta. Para repetir la medición: `composer test:cobertura`.
+- **Medir la cobertura (RNF10):** el entorno local tiene pcov 1.0.12: 92,3 % en PHP 8.4.26 (versión declarada) y 92,4 % en PHP 8.5.10, medido el 2026-10-07 y confirmado en PHP 8.4.26 el 2026-10-16 tras pasar la API a controladores (los controladores no están en el alcance de `phpunit.cobertura.xml`). El CI (GitHub Actions con pcov) aún no se ha podido ejecutar por un bloqueo de facturación de la cuenta. Para repetir la medición: `composer test:cobertura`.
 - **Actualizar una base existente:** `php artisan migrate`, luego `php artisan db:seed --class=MetodoPagoSeeder` (agrega Nequi) y `php artisan db:seed --class=RoleSeeder` (permisos estrictos de RF10). Los usuarios aceptarán la política de datos en su próximo ingreso.
-- **Validación con usuarios reales (OE4):** las pruebas de usabilidad con el personal de MundoCoco y la medición de indicadores en operación real son actividades del proyecto; el sistema provee los indicadores para registrarlas.
+- **Validación con usuarios reales (OE4):** pendiente. Se hará como piloto remoto de 1 o 2 días con la administradora, con datos reales en el despliegue de demostración (`docs/MANUAL_TECNICO.md` §3), encuesta anónima en Google Forms y los indicadores de *Reportes → Indicadores de gestión*. Con una sola participante y sin línea base, el OE4 se declara parcialmente cumplido.

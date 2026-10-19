@@ -2,11 +2,14 @@
 
 La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **174 tests (635 assertions)** en 16,30 s con PHP 8.5.10 (40,20 s en PHP 8.4.26, sin caché de código), 100% verde en ambas versiones. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
-## Estado Actual 2026-10-05
+## Estado Actual 2026-10-16
+
+Repetido en PHP 8.4.26 después de pasar la API v1 a controladores (`f9c7292`):
 
 ```
 PASS 174 tests (635 assertions)
 vendor/bin/pint --test : verde (PSR-12)
+composer test:cobertura : 92,2 % según Pest (trunca; 92,3 % redondeado), igual que el 2026-10-07
 ```
 
 ## Cobertura de negocio (12 RF + 10 RNF)
@@ -121,7 +124,7 @@ Medido en un entorno aislado (copia del proyecto con su propia base MySQL 8.4.3 
 
 - **RNF01 (5 usuarios simultáneos):** 5 sesiones (1 Admin, 3 Operario, 1 Consultor) × 3 rondas × 5–8 pantallas = 75 cargas por ejecución, más 5 procesos registrando 20 ventas cada uno (10 en disputa por 30 unidades de un producto). Tras corregir la página de reportes: mediana 241–269 ms, p95 864–1.012 ms, máximo 909–1.207 ms, 0 errores. Ventas: 80 registradas y 20 rechazadas por stock por ejecución, 0 errores, máximo 210 ms; sin stock negativo ni cadenas de movimientos rotas.
 - **Hallazgo corregido:** `/admin/reportes` tardaba 2,4–3,0 s (hasta 3,4 s) por dibujar todos los movimientos del periodo; ahora muestra los 200 más recientes (`Reportes::MOVIMIENTOS_EN_PANTALLA`), informa el total y la exportación sigue completa (≈0,9–1,0 s).
-- **RNF09 (BD < 100 MB):** 0,89 MB inicial (25 tablas, 42 productos); 3,13 MB con 200 productos y 2.812 movimientos.
+- **RNF09 (BD < 100 MB):** 0,89 MB inicial con el catálogo de demostración de 42 productos (1,00 MB con el catálogo real de 50 productos, cifra que usa el Trabajo de Grado); 3,13 MB con 200 productos y 2.812 movimientos.
 - **RNF04 (sesión de 2 h):** con `SESSION_DRIVER=database`, sesión activa a los 119 min de inactividad y cerrada (redirige a login) a los 121 min. Además `RequisitosNoFuncionalesTest` verifica `session.lifetime = 120` y bcrypt.
-- **RNF03:** Chrome 154 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox, Edge y Safari NO probados (Edge no está instalado en el equipo de pruebas).
+- **RNF03:** Chrome 154 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox 158 (Puppeteer sobre WebDriver BiDi, SQLite de demostración): las mismas 35 comprobaciones sin desbordamiento ni errores, más un flujo de venta (selectores, rechazo por stock insuficiente, venta válida, listado, reportes PDF/XLSX) con 10 de 10 pasos correctos (2026-10-16). Edge NO probado (no está instalado en el equipo de pruebas; comparte motor con Chrome). Safari descartado (no hay equipo Apple).
 - **RNF08:** solo MySQL 8.4.3 y SQLite (pruebas); PostgreSQL y SQL Server NO probados.

@@ -28,6 +28,7 @@ Filament (pantallas)  ──►  Servicios (reglas de negocio)  ──►  Model
   - `InventarioService`: `registrarInicial`, `adicionarStock`, `retirarStock`, `registrarLote`, `registrarConteo` (cierre con conteo físico: sobrante → `ajuste_positivo`, faltante → `ajuste_negativo`, o `inicial` en el primer conteo; usado por `Filament/Pages/ConteoFisico`, permiso `registrar movimientos`), `stockCalculado` (RF05).
   - `CajaService`: `abrir`, `cerrar`, `recalcularCajaAbierta`, `totalesPorFecha` (RF11). Saldo teórico = base + ventas − gastos − retiros; los retiros son `Gasto` con `categoria = Gasto::RETIRO` (consignaciones) y se acumulan en `caja.total_retiros`, no en `total_gastos`.
   - `ReporteService` / `ReporteExportService`: reportes RF08/RF09/RF11 e indicadores OE4; exportación PDF/Excel/CSV.
+- **API v1:** `app/Http/Controllers/Api/V1/` (`ProductoController`, `VentaController`, `ReporteController`); solo consultan modelos y servicios, sin lógica de negocio propia.
 - **Dinero:** siempre en centavos enteros (`App\Support\Dinero`); se guarda como `decimal(10,2)`.
 - **Stock:** los servicios lo modifican con el *query builder* y registran su propio `MovimientoInventario`; el `ProductoObserver` solo traza ajustes manuales hechos desde el formulario de producto.
 - **Concurrencia:** `DB::transaction(…, 3)` + `lockForUpdate`, bloqueando productos en orden de `id`.
@@ -67,7 +68,7 @@ PHP: el proyecto exige 8.4 o superior (`composer.json`); se desarrolló con 8.5.
 
 ### Despliegue de demostración en la nube (no es producción)
 
-Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del `Dockerfile`) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito). No debe usarse con datos reales de la tienda.
+Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del `Dockerfile`) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito); ambos proveedores alojan los datos en EE. UU. No es producción: solo se usa con datos reales de la tienda para el piloto de validación del trabajo de grado, con la autorización escrita de la administradora.
 
 - Archivos: `Dockerfile`, `docker/entrypoint.sh` (al arrancar ejecuta `migrate --force --seed`, idempotente, y deja las cachés de Laravel y Filament) y `render.yaml` (Blueprint con las variables de entorno).
 - Variables que se definen en el panel de Render (no están en el repositorio): `APP_KEY`, `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. La conexión a TiDB exige TLS (`MYSQL_ATTR_SSL_CA`, ya definida en `render.yaml`) y usa el puerto 4000.
@@ -139,7 +140,7 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-CI (`.github/workflows/quality.yml`) ejecuta los cuatro pasos en cada push y pull request.
+CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación vigente es local (2026-10-16, PHP 8.4.26: 174 pruebas, 635 aserciones, cobertura 92,3 %).
 
 ## 9. Diagnóstico
 

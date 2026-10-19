@@ -1,9 +1,9 @@
 # MundoCoco - Implementación Estricta del Anteproyecto
 
-> **Documento vivo** - Actualizado en cada fase de implementación
-> Fecha inicio: 2026-09-08 | Fecha cierre: 2026-09-24
-> Objetivo: Cumplimiento 100% del anteproyecto + RF/RNF + buenas prácticas
-> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 174/174 verde | Pint: verde | Vite: verde
+> **Bitácora histórica** de la implementación. Fecha inicio: 2026-09-08 | Última fase: 2026-10-15
+> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 174/174 verde (2026-10-16, PHP 8.4.26) | Pint: verde | Vite: verde
+>
+> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **174 pruebas** y cobertura del **92,3 %**.
 
 ---
 
@@ -40,7 +40,7 @@
 
 **OE3 Funcionalidades integradas:** RF11 con gastos `CajaService::totalesPorFecha():98` incluye `Gasto::whereDate()->sum('monto')`, RF05 `InventarioService::calcularStockTotal():66`, RF12 `MovimientoInventario` trazable.
 
-**OE4 Validación:** Pest 84 tests + `SimulacionRealMundoCocoTest.php` simula jornada 15 ventas, 3 métodos, gastos, cierre 0 diferencia, tiempo <3s RNF01.
+**OE4 Validación:** verificación técnica con Pest (hoy 174 pruebas) + `SimulacionRealMundoCocoTest.php` (jornada de 15 ventas, gastos, cierre con diferencia 0, tiempo <3s RNF01). La validación con usuarios en la operación real está pendiente (piloto remoto, ver Fase 12).
 
 ### 1.2 Brechas Iniciales → Resueltas
 
@@ -215,7 +215,23 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 - [x] RNF08: SQL con variantes para SQL Server; respaldo portable
 - [x] RNF10: cobertura medida en CI (pcov, `--min=80` sobre código crítico); Ley 1581 con consentimiento informado obligatorio
 - [x] Errores previos encontrados: `CajaForm` usaba `TextInput::color()` (500 al abrir caja), CI con PHP 8.3 incompatible con el `composer.lock` (Symfony 8 exige 8.4), manual de usuario truncado
+- [x] Tests 161/161 al cierre de la fase (2026-09-25); 166 tras las pruebas de RNF del 2026-10-05
+
+### Fase 11 - Contraste con la planilla real de la tienda (2026-10-07)
+
+- [x] Catálogo real: 50 productos con las tarifas de la planilla física (`ProductoSeeder::CATALOGO`), stock 0 y costo vacío hasta el primer conteo
+- [x] RF11: categoría de gasto **Retiro / consignación** (`caja.total_retiros`); saldo teórico = base + ventas − gastos − retiros
+- [x] Cierre con **Conteo físico** (`InventarioService::registrarConteo`, página `ConteoFisico`)
+- [x] Zona horaria `America/Bogota` (`APP_TIMEZONE`): con UTC las ventas después de las 7 p. m. caían en el día siguiente
+- [x] PHP 8.4 exigido en `composer.json`; suite y cobertura verificadas en PHP 8.4.26 (92,3 %)
 - [x] Tests 174/174 (635 assertions)
+
+### Fase 12 - Demostración en la nube y limpieza (2026-10-15)
+
+- [x] Despliegue de prueba gratuito en Render (Docker) + TiDB Cloud: `Dockerfile`, `docker/entrypoint.sh`, `render.yaml`; `TRUSTED_PROXIES` en `bootstrap/app.php` (ver `MANUAL_TECNICO.md` §3)
+- [x] API v1 movida de `routes/api.php` a `app/Http/Controllers/Api/V1/` sin cambiar rutas, permisos ni respuestas
+- [x] Quitados restos de la plantilla de Laravel (comando `inspire`, helpers de ejemplo en `tests/Pest.php`)
+- [ ] Validación OE4 con la administradora (piloto remoto de 1 o 2 días, encuesta anónima en Google Forms): pendiente
 
 ---
 
@@ -238,7 +254,9 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 
 ---
 
-## 5. Métricas de Éxito (Anteproyecto Pág 2-3) - Cumplidas
+## 5. Métricas de Éxito (Anteproyecto Pág 2-3) - verificación técnica
+
+> Esta tabla muestra lo que el sistema **permite medir** y lo verificado con pruebas automatizadas. No demuestra reducciones reales de pérdidas ni de tiempos en la tienda: eso depende del piloto con la administradora, y el Trabajo de Grado declara el OE4 parcialmente cumplido.
 
 | Indicador | Meta | Medido en Proyecto | Evidencia |
 |-----------|------|--------------------|-----------|
@@ -279,8 +297,8 @@ php artisan serve # /admin
 ## 8. Referencias
 
 - Anteproyecto: Helados 14 sabores, Bebidas 13, Aceites 8, Coco 7 (Pág 1-2, RF06)
-- Legal: Ley 23/603/1581/1377/1266/527 (Pág 6-7) → `privacidad.blade.php`
-- Scrum: `quality.yml` CI push/PR PHP 8.4 + Node 20
+- Legal: Ley 23/603/1581/1377/527 (Pág 6-7) → `privacidad.blade.php` (la Ley 1266 se retiró el 2026-10-05 por la corrección del Trabajo de Grado)
+- CI: `quality.yml` push/PR PHP 8.4 + Node 20 (definido; sin ejecuciones por el bloqueo de facturación de GitHub)
 - RF y RNF: 12+10 en `RF y RNF.docx` → `CUMPLIMIENTO_ANTEPROYECTO.md`
 ```
 

@@ -26,7 +26,7 @@ El panel está disponible en `/admin`. El usuario administrador se crea con `Adm
 
 ### Demo en la nube (solo pruebas)
 
-Despliegue gratuito de demostración, no apto para datos reales: https://mundococo-demo.onrender.com/admin/login (Render + TiDB Cloud; ver `docs/MANUAL_TECNICO.md`, sección 3). El primer acceso tras un periodo de inactividad tarda cerca de un minuto.
+Despliegue gratuito de demostración, no es producción: https://mundococo-demo.onrender.com/admin/login (Render + TiDB Cloud, servidores en EE. UU.; ver `docs/MANUAL_TECNICO.md`, sección 3). Solo se usa con datos reales de la tienda para el piloto de validación, con la autorización escrita de la administradora. El primer acceso tras un periodo de inactividad tarda cerca de un minuto.
 
 ### Actualizar una base existente
 
@@ -57,7 +57,7 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-Cada cambio se valida en GitHub Actions con estilo, pruebas, cobertura y compilación de frontend.
+El flujo de GitHub Actions (`.github/workflows/quality.yml`) define estos mismos pasos, pero aún no ha podido ejecutarse por un bloqueo de facturación de la cuenta; hoy la verificación se hace localmente (última: 2026-10-16, PHP 8.4.26, 174 pruebas, 635 aserciones, cobertura 92,3 %).
 
 ## Estructura relevante
 
@@ -65,7 +65,8 @@ Cada cambio se valida en GitHub Actions con estilo, pruebas, cobertura y compila
 - `app/Filament/`: interfaz administrativa.
 - `app/Policies/`: autorización por permisos (RF10).
 - `config/mundococo.php`: parámetros de negocio configurables (RNF06).
-- `routes/api.php`: API de integración de solo lectura (RNF07).
+- `routes/api.php` y `app/Http/Controllers/Api/V1/`: API de integración de solo lectura (RNF07).
+- `Dockerfile`, `docker/entrypoint.sh`, `render.yaml`: despliegue de demostración en la nube.
 - `database/migrations/`: estructura e índices de base de datos.
 - `tests/`: pruebas de reglas de negocio y flujos; `tests/Feature/CumplimientoAnteproyectoTest.php` verifica el anteproyecto.
 - `docs/`: `MANUAL_USUARIO.md`, `MANUAL_TECNICO.md`, `CUMPLIMIENTO_ANTEPROYECTO.md`, `IMPLEMENTACION.md`, `TESTING_REPORT.md`.

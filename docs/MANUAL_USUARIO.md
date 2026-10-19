@@ -7,7 +7,7 @@
 
 ## 1. Ingreso al sistema
 
-1. Abre el navegador (Chrome, Edge, Firefox o Safari) y entra a `/admin`.
+1. Abre el navegador (se probó en Chrome y Firefox; Edge debería funcionar igual por compartir motor con Chrome) y entra a `/admin`.
 2. Escribe tu **correo electrónico** y tu **contraseña**.
 3. Pulsa **Iniciar sesión**.
 
@@ -15,6 +15,7 @@
 - **Cambiar tu contraseña:** menú de tu usuario (arriba a la derecha) → **Perfil**.
 - Si olvidas tu contraseña, pide al Administrador que te asigne una nueva desde **Seguridad → Usuarios**.
 - La sesión se cierra sola después de 2 horas sin actividad.
+- En la demostración en la nube (`https://mundococo-demo.onrender.com/admin/login`) la primera carga después de un rato sin uso puede tardar cerca de un minuto; espera y no recargues varias veces.
 
 ### 1.1 Roles de usuario
 

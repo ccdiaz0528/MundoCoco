@@ -15,7 +15,7 @@
 <body>
 <main>
     <h1>MundoCoco - Política de Tratamiento de Datos Personales</h1>
-    <p><span class="etiqueta">Ley 1581 de 2012 · Decreto 1377 de 2013 · Ley 1266 de 2008</span></p>
+    <p><span class="etiqueta">Ley 1581 de 2012 · Decreto 1377 de 2013 · Ley 527 de 1999</span></p>
 
     <p><strong>Responsable del tratamiento:</strong> Tienda MundoCoco, Cali, Colombia.
         <strong>Canal de atención:</strong> <a href="mailto:{{ config('mundococo.contacto_datos') }}">{{ config('mundococo.contacto_datos') }}</a></p>
@@ -52,14 +52,14 @@
     </ul>
 
     <h2>6. Información financiera y validez electrónica</h2>
-    <p>Los registros de ventas, gastos y caja se tratan con los principios de la Ley 1266 de 2008. Los registros y reportes
+    <p>Los registros de ventas, gastos y caja solo son visibles para los roles autorizados. Los registros y reportes
         electrónicos del sistema tienen validez como mensajes de datos conforme a la Ley 527 de 1999.</p>
 
     <h2>7. Vigencia</h2>
     <p>Esta política rige desde su publicación y se mantiene mientras el sistema esté en operación. Los cambios sustanciales
         se informarán a los usuarios y requerirán una nueva autorización.</p>
 
-    <p><em>Última actualización: 24 de septiembre de 2026.</em></p>
+    <p><em>Última actualización: 16 de octubre de 2026.</em></p>
     <p><a href="/admin">← Volver al panel</a></p>
 </main>
 </body>
