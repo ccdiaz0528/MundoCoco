@@ -57,7 +57,7 @@ class ReporteExportService
             $salida = fopen('php://output', 'w');
             fwrite($salida, "\xEF\xBB\xBF"); // BOM: Excel abre tildes correctamente
             fputcsv($salida, $encabezados);
-            foreach ($filas as $fila) {
+            foreach ($this->filasSeguras($filas) as $fila) {
                 fputcsv($salida, $fila);
             }
             fclose($salida);
@@ -65,6 +65,31 @@ class ReporteExportService
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$archivo}.csv\"",
         ]);
+    }
+
+    /**
+     * Excel y LibreOffice interpretan como fórmula cualquier celda que empiece
+     * por =, +, -, @, tab o CR; se neutraliza con un apóstrofo. Los números
+     * (incluidos los negativos) no se tocan.
+     *
+     * @param  array<int, array<int, mixed>>  $filas
+     * @return array<int, array<int, mixed>>
+     */
+    private function filasSeguras(array $filas): array
+    {
+        return array_map(
+            fn (array $fila): array => array_map(fn ($valor) => $this->celdaSegura($valor), $fila),
+            $filas,
+        );
+    }
+
+    private function celdaSegura(mixed $valor): mixed
+    {
+        if (! is_string($valor) || $valor === '' || is_numeric($valor)) {
+            return $valor;
+        }
+
+        return preg_match('/^[=+\-@\t\r]/', $valor) === 1 ? "'".$valor : $valor;
     }
 
     private function pdf(string $tipo, string $desde, string $hasta): Response
@@ -102,7 +127,7 @@ class ReporteExportService
         $hoja->setTitle(Str::limit(Str::ascii(self::TIPOS[$tipo]), 28, ''));
         $hoja->fromArray($encabezados, null, 'A1');
         if ($filas !== []) {
-            $hoja->fromArray($filas, null, 'A2');
+            $hoja->fromArray($this->filasSeguras($filas), null, 'A2');
         }
         $hoja->getStyle('A1:'.$hoja->getHighestColumn().'1')->getFont()->setBold(true);
         foreach (range('A', $hoja->getHighestColumn()) as $columna) {

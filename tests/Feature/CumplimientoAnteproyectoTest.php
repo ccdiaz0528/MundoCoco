@@ -466,6 +466,26 @@ describe('RNF07 escalabilidad: sucursales e integración por API', function () {
         $this->getJson('/api/v1/reportes/desconocido')->assertNotFound();
     });
 
+    it('la API de ventas pagina y acota por_pagina', function () {
+        $metodo = MetodoPago::factory()->create(['nombre' => MetodoPago::EFECTIVO]);
+
+        for ($i = 0; $i < 3; $i++) {
+            app(VentaService::class)->crear(['metodo_pago_id' => $metodo->id], [['producto_id' => $this->producto->id, 'cantidad' => 1]]);
+        }
+
+        Sanctum::actingAs(tap(User::factory()->create())->assignRole('Admin'));
+
+        $this->getJson('/api/v1/ventas?por_pagina=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('per_page', 2)
+            ->assertJsonPath('total', 3)
+            ->assertJsonPath('data.0.detalles.0.producto', 'Cocada');
+
+        // RNF09: un valor absurdo de página no puede volcar toda la tabla.
+        $this->getJson('/api/v1/ventas?por_pagina=500')->assertStatus(422);
+    });
+
     it('emite tokens por consola solo para usuarios con rol', function () {
         $admin = tap(User::factory()->create(['email' => 'admin@mundococo.test']))->assignRole('Admin');
 

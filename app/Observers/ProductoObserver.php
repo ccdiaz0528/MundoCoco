@@ -57,23 +57,35 @@ class ProductoObserver
         $ajuste = self::$ajustes[$producto->id] ?? null;
         unset(self::$ajustes[$producto->id]);
 
-        if ($ajuste === null || $ajuste['nuevo'] === $ajuste['anterior']) {
-            return;
+        if ($ajuste !== null && $ajuste['nuevo'] !== $ajuste['anterior']) {
+            $diff = $ajuste['nuevo'] - $ajuste['anterior'];
+
+            MovimientoInventario::create([
+                'producto_id' => $producto->id,
+                'user_id' => Auth::id(),
+                'tipo' => $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO,
+                'cantidad' => abs($diff),
+                'stock_anterior' => $ajuste['anterior'],
+                'stock_nuevo' => $ajuste['nuevo'],
+                'motivo' => 'Ajuste manual de stock',
+            ]);
+
+            // RNF04: auditoría de cambios de inventario.
+            AuditService::logStockAjuste($producto, $ajuste['anterior'], $ajuste['nuevo'], $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO);
         }
 
-        $diff = $ajuste['nuevo'] - $ajuste['anterior'];
+        // RNF04: el resto de cambios del catálogo (precio, nombre, estado)
+        // también quedan auditados; el stock ya se registró arriba.
+        $relevantes = ['nombre', 'precio_venta', 'precio_costo', 'categoria_id', 'stock_minimo', 'activo'];
+        $cambios = collect($producto->getChanges())->only($relevantes)->all();
 
-        MovimientoInventario::create([
-            'producto_id' => $producto->id,
-            'user_id' => Auth::id(),
-            'tipo' => $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO,
-            'cantidad' => abs($diff),
-            'stock_anterior' => $ajuste['anterior'],
-            'stock_nuevo' => $ajuste['nuevo'],
-            'motivo' => 'Ajuste manual de stock',
-        ]);
-
-        // RNF04: auditoría de cambios de inventario.
-        AuditService::logStockAjuste($producto, $ajuste['anterior'], $ajuste['nuevo'], $diff > 0 ? MovimientoInventario::TIPO_AJUSTE_POSITIVO : MovimientoInventario::TIPO_AJUSTE_NEGATIVO);
+        if ($cambios !== []) {
+            AuditService::log(
+                'producto_actualizado',
+                $producto,
+                $cambios,
+                collect($producto->getOriginal())->only(array_keys($cambios))->all(),
+            );
+        }
     }
 }

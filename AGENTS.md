@@ -1,82 +1,81 @@
 # AGENTS.md - MundoCoco
 
 ## Stack (verify in `composer.json`/`package.json`, not docs)
-- Laravel `^13.0` + Filament `^5.0` + PHP 8.4+ (`composer.json` says `^8.3` but `composer.lock` pins Symfony 8, which needs 8.4) + Pest `^4.5` (`pest-plugin-laravel`) + Sanctum `^4.3` (API tokens).
-- Node 20+, Vite 8 + `@tailwindcss/vite` 4, `laravel-vite-plugin` 3. Entrypoints `resources/css/app.css`, `resources/js/app.js` (`vite.config.js`).
-- DB: MySQL default (`.env.example`), tests force `sqlite :memory:` (`phpunit.xml`). No external DB needed for tests.
+- Laravel `^13.0` + Filament `^5.0` + PHP `^8.4` + Sanctum `^4.0` (API tokens) + Pest `^4.5` (`pest-plugin-laravel`). Panel: `app/Providers/Filament/AdminPanelProvider.php` (`->databaseTransactions()`).
+- Node 20+, Vite 8 + `@tailwindcss/vite` 4 + `laravel-vite-plugin` 3. Entrypoints `resources/css/app.css`, `resources/js/app.js`.
+- DB: `.env.example` sets MySQL, but `config/database.php` defaults to sqlite; tests force `sqlite :memory:` (`phpunit.xml`). No external DB needed for tests.
 
 ## Setup & Run
 ```powershell
 composer install
 Copy-Item .env.example .env
 php artisan key:generate
-# edit .env DB_CONNECTION/credentials (mysql) or use sqlite
-# also set ADMIN_NAME/ADMIN_EMAIL/ADMIN_PASSWORD (initial Admin user via AdminUserSeeder)
+# .env: DB credentials + ADMIN_NAME/ADMIN_EMAIL/ADMIN_PASSWORD (initial Admin user via AdminUserSeeder)
 php artisan migrate --seed
 npm ci
 npm run build
-php artisan serve  # admin at /admin
+php artisan serve  # panel at /admin
 ```
-- One-shot: `composer setup` (`composer.json`) does `install + .env copy + key:generate + migrate --force + npm install + build` (no `--seed`; use `php artisan migrate --seed` for RF06 categories/products).
-- Existing DB after pulling: `php artisan migrate`, then `php artisan db:seed --class=MetodoPagoSeeder` (Nequi) and `--class=RoleSeeder` (RF10 permissions). Seeders are idempotent.
-- Dev all-in-one: `composer dev` (`composer.json`) runs `serve` + `queue:listen --tries=1` + `vite` via `concurrently`.
-- Vite watches ignore `storage/framework/views/**` (`vite.config.js`).
+- One-shot: `composer setup` does `install + .env copy + key:generate + migrate --force + npm install + build` (no `--seed`; run `php artisan migrate --seed` for the RF06 catalog).
+- Existing DB after pulling: `php artisan migrate`, then `db:seed --class=MetodoPagoSeeder` (Nequi) and `--class=RoleSeeder` (RF10 permissions). All seeders are idempotent (`firstOrCreate`).
+- Dev all-in-one: `composer dev` serves `serve` + `queue:listen --tries=1` + `vite` via `concurrently`.
 - **Careful**: `php artisan install:*` commands run pending migrations against the `.env` database.
-- Cloud demo (test only, not production): `Dockerfile` + `docker/entrypoint.sh` (runs `migrate --force --seed` on boot) + `render.yaml`; every push to `main` redeploys https://mundococo-demo.onrender.com. Details in `docs/MANUAL_TECNICO.md` §3.
+- Demo deploy (not production): `Dockerfile` + `docker/entrypoint.sh` (`migrate --force --seed` on boot, plus `schedule:work` so the daily backup fires in the demo) + `render.yaml`; every push to `main` redeploys https://mundococo-demo.onrender.com (Render + TiDB).
 
 ## Verification - run in this order (mirrors CI `quality.yml`)
 ```powershell
-vendor/bin/pint --test   # check style, no fix; fix with vendor/bin/pint
-composer test            # = php artisan config:clear --ansi && php artisan test
+vendor/bin/pint --test   # style check, no fix; fix with vendor/bin/pint
+composer test            # = config:clear + php artisan test
 npm run build            # must pass; CI runs npm ci + build
 ```
-- CI `.github/workflows/quality.yml` on `push`/`pull_request`: PHP 8.4 (pcov) + Node 20, `composer install` -> `pint --test` -> `php artisan test` -> coverage `--min=80` on critical code -> `npm ci && npm run build`.
-- RNF10 coverage locally: `composer test:cobertura` (`phpunit.cobertura.xml`, critical dirs only). Needs pcov/xdebug (pcov 1.0.12 is installed locally; last measurement 92.3 % on PHP 8.4.26, 92.4 % on 8.5.10).
-- Full style fix: `vendor/bin/pint` (no `pint.json` - uses Laravel preset, PSR-12, `.editorconfig` 4 spaces/LF, yaml 2 spaces).
+- CI `.github/workflows/quality.yml` (push/PR): PHP 8.4 (pcov) + Node 20 → pint --test → tests → coverage `--min=80` via `phpunit.cobertura.xml` → npm build. But CI hasn't been runnable (account billing block, per README) - **local verification is the real gate**.
+- Coverage scope (`phpunit.cobertura.xml`): only `app/{Services,Support,Observers,Policies,Http/Middleware,Models}` - Filament screens excluded. Local: `composer test:cobertura` (needs pcov/xdebug).
+- No `pint.json`: Laravel preset, PSR-12, `.editorconfig` (4 spaces, LF).
 
-## Single Test / Focused Run
+## Single / focused test
 ```powershell
 php artisan test --filter=VentaServiceTest
 vendor/bin/pest --filter="puede crear una venta"
-php artisan test tests/Unit/Services/CajaServiceTest.php
 php artisan test tests/Feature/CumplimientoAnteproyectoTest.php
 ```
-- Pest auto-applies `RefreshDatabase` to `Feature`+`Unit` (`tests/Pest.php`). No manual trait needed there; add it explicitly outside those dirs.
+- Pest auto-applies `RefreshDatabase` to `Feature`+`Unit` (`tests/Pest.php`). No manual trait needed there.
 
 ## Architecture
-- `app/Services/`: transactional rules - `VentaService::crear/actualizar/anular/productosBajoMinimo` (único camino: `CreateVenta`/`EditVenta` delegan vía `handleRecordCreation`/`handleRecordUpdate`; el repeater `detalles` NO usa `->relationship()`; panel con `->databaseTransactions()`), `CajaService::abrir/cerrar/recalcularCajaAbierta/totalesPorFecha`, `InventarioService::registrarInicial/adicionarStock/retirarStock/registrarLote/stockCalculado/inconsistenciasStock`, `ReporteService` (incl. `indicadores` OE4, `flujoCajaDiario`, `expresionFecha` per driver incl. sqlsrv), `ReporteExportService` (`TIPOS` = 11 reports × CSV/PDF/XLSX via `reportes.export`; same data as JSON in the API), `AuditService`. Keep business logic here, not in Filament Resources or Models.
-- `app/Filament/Resources/*/{Schemas,Tables,Pages}/`: Filament 5 structure (plural dirs: `Ventas`, `Cajas`, `Productos`, `Gastos`, `Movimientos`, `AuditLogs`, ...). New model needs `Resource.php` + `Schemas/*Form.php` + `Tables/*Table.php` + `Pages/List|Create|Edit.php`. Plus `Filament/Pages/{Reportes,ConsentimientoDatos}.php` and `Filament/Widgets/{StatsOverview,StockCritico}.php`. Filament 5 `TextInput` has no `->color()` (use `->hintColor()`).
-- `app/Models/`: `Venta`, `Caja`, `Producto`, `Categoria`, `MetodoPago`, `VentaDetalle`, `MovimientoInventario`, `Gasto`, `AuditLog`, `Sucursal` - all `decimal:2` casts return strings (cast to float/string explicitly in tests). `Producto.codigo` is unique, auto-generated in `booted()` when empty. `Producto` uses `SoftDeletes` (RF01 eliminar); historical relations (`VentaDetalle::producto`, `MovimientoInventario::producto`) are `withTrashed()`. `Venta::vigentes()` excludes annulled sales - **every sales total/report must use it**. `Venta/Caja/Gasto/MovimientoInventario` use trait `Concerns\PerteneceASucursal` (default = principal, RNF07).
-- `app/Observers/`: `VentaObserver` / `GastoObserver` / `ProductoObserver` recalculate open `Caja` on sale/gasto changes. Registered in `app/Providers/AppServiceProvider.php`. **Gotcha**: Laravel resolves a new observer instance per event (`Class@event`), so `updating`→`updated` state must be `static` (with unset-on-read), never instance props.
-- Money math lives in `App\Support\Dinero` (`aCentavos`/`desdeCentavos`); services must mutate stock via query-builder (no model events) so `ProductoObserver` only traces manual panel edits.
-- `app/Policies/`: check **permissions** (`$user->can('ver ventas')`), never role names; `database/seeders/RoleSeeder.php` is the single source of truth. RF10 strict: `Admin` = all; `Operario` = ver/crear/editar ventas + ver productos/categorias/movimientos; `Consultor` = ver/exportar reportes. `User implements FilamentUser` (`canAccessPanel` = has any role) - without it production returns 403 to everyone.
-- `database/migrations/`: `2026_09_24_000001..000008` add `caja.total_nequi`, `venta_detalles.precio_base`, role rename Operador→Operario, sale annulment (`ventas.anulada_at/anulada_por/motivo_anulacion`), `productos.deleted_at`, `movimientos_inventario.fecha_movimiento`, `users.politica_aceptada_at`, `sucursales` + `sucursal_id`. Reference data (Nequi, permissions) comes from idempotent seeders, not migrations.
-- Ley 1581: `App\Http\Middleware\ExigirConsentimientoDatos` (panel auth middleware) redirects users without `politica_aceptada_at` to `ConsentimientoDatos`. `UserFactory` accepts by default; use `->sinConsentimiento()` to test the flow.
-- `routes/web.php`: `/privacidad` view + `/login`→`/admin/login` + `/reportes/export/{tipo}/{csv,pdf,xlsx}` via `ReporteExportService` (middleware `auth` + `can:exportar reportes`; `desde`/`hasta` validated `Y-m-d`, invalid → 422). `routes/api.php` (RNF07): `/api/v1/{productos,ventas,reportes/{tipo}}` → `app/Http/Controllers/Api/V1/{Producto,Venta,Reporte}Controller`, `auth:sanctum` + `can:` per route; tokens via `php artisan mundococo:token-api {email}`. `routes/console.php` schedules real `backup:database` (SQL dump to `storage/app/backups`, 30d retention) + audit cleanup >365d; `config/session.php` (120 min lifetime).
-- Timezone: `config/app.php` uses `APP_TIMEZONE` (default `America/Bogota`, UTC-5). Caja is by date, so UTC would push sales after 7 p. m. to the next day; do not revert it (tests in `CumplimientoAnteproyectoTest`, "Zona horaria").
-- `config/mundococo.php` (RNF06): `precio_venta_min/max`, `factor_reorden`, `contacto_datos`, `admin_*` - read these instead of hardcoding.
+- `app/Services/`: transactional rules - `VentaService::crear/actualizar/anular`, `CajaService::abrir/cerrar/recalcularCajaAbierta/totalesPorFecha`, `InventarioService::registrarInicial/adicionarStock/retirarStock/registrarConteo/stockCalculado`, `ReporteService` (`expresionFecha` per driver incl. sqlsrv), `ReporteExportService` (`TIPOS` = 11 reports × CSV/PDF/XLSX), `AuditService`. Keep business logic here, not in Filament Resources or Models. Sale CRUD goes ONLY through services: `CreateVenta/EditVenta` via `handleRecordCreation/handleRecordUpdate`, and `EditCaja` locks + recalculates via `recalcularCajaAbierta` - the `detalles` repeater does NOT use `->relationship()`.
+- `app/Filament/Resources/*/{Schemas,Tables,Pages}/` (plural dirs: `Ventas`, `Cajas`, `Productos`, `Gastos`, `Movimientos`, `AuditLogs`, ...). New model needs `Resource.php` + `Schemas/*Form.php` + `Tables/*Table.php` + `Pages/List|Create|Edit.php`. Plus `Filament/Pages/{Reportes,ConteoFisico,ConsentimientoDatos}` and `Filament/Widgets/{StatsOverview,StockCritico}`. Filament 5 `TextInput` has no `->color()` (use `->hintColor()`).
+- `app/Models/`: all `decimal:2` casts return strings (cast explicitly in tests). `Producto.codigo` unique, auto-generated in `booted()`; `Producto` uses SoftDeletes and historical relations (`VentaDetalle::producto`, `MovimientoInventario::producto`) are `withTrashed()` - and `VentaService::moverStock` restores stock with `Producto::withTrashed()` so a soft-deleted product still balances. `Venta::vigentes()` excludes annulled sales - **every sales total/report must use it**. `Venta/Caja/Gasto/MovimientoInventario` use `Concerns\PerteneceASucursal` (defaults to principal branch, RNF07).
+- `app/Observers/`: `VentaObserver`/`GastoObserver` recalc the open `Caja`; `ProductoObserver` traces manual stock edits AND audits catalog field changes (`producto_actualizado`). All registered in `AppServiceProvider`. **Gotcha**: Laravel resolves a new observer instance per event (`Class@event`), so `updating`→`updated` state must be `static` (unset-on-read), never instance props.
+- Money math lives in `App\Support\Dinero` (`aCentavos/desdeCentavos`); services mutate stock via query builder (no model events) so `ProductoObserver` only traces manual panel edits.
+- `app/Policies/`: check **permissions** (`$user->can('ver ventas')`), never role names; `database/seeders/RoleSeeder.php` is the single source of truth (Admin = all; Operario = ventas + inventario read; Consultor = reportes). `User implements FilamentUser` - without it production returns 403 to everyone.
+- Migrations: `2026_09_24_000001..000008` (Nequi, `precio_base`, Operador→Operario, anulación, soft deletes, `fecha_movimiento`, consentimiento, sucursales) and `2026_10_22_000001` unique index `caja_fecha_sucursal_unique` (throws on duplicate caja dates - fix data before migrating). Reference data (Nequi, permissions, catalog) comes from idempotent seeders, not migrations.
+- Ley 1581: `App\Http\Middleware\ExigirConsentimientoDatos` redirects users without `politica_aceptada_at` to `ConsentimientoDatos`. `UserFactory` accepts by default; use `->sinConsentimiento()` to test the flow.
+- `routes/web.php`: `/privacidad` view + `/login`→`/admin/login` + `/reportes/export/{tipo}/{formato}` via `ReporteExportService` (`auth` + `can:exportar reportes`; invalid `desde/hasta` → **422**, not redirect). `routes/api.php` (RNF07, read-only): `v1/{productos,ventas,reportes/{tipo}}`, `auth:sanctum` + `throttle:60,1` + `can:` per route; `/api/v1/ventas` is a paginated Laravel paginator (`data/total/per_page`; `por_pagina` 1-200, default 100, 422 beyond). Tokens via `php artisan mundococo:token-api {email}`; tokens expire per `SANCTUM_EXPIRATION` (minutes; default 30 days, 0 = never). `routes/console.php`: `backup:database` daily 02:00 (SQL dump to `storage/app/backups`, 30d retention) + weekly audit cleanup >365d; session lifetime 120 min.
+- Timezone: `APP_TIMEZONE` (default `America/Bogota`, UTC-5). Caja is by date, so UTC would push sales after 7 p.m. into the next day; **do not revert**.
+- `config/mundococo.php` (RNF06): `precio_venta_min/max` ($2.000-$95.000), `factor_reorden`, `contacto_datos`, `admin_*` - read these instead of hardcoding.
 
 ## Critical Business Rules (will break tests if ignored)
-- **Server-validated prices (RF04)**: `precio_base` always comes from DB; a line may carry a `precio_unitario` different from base only within `config('mundococo.precio_venta_min/max')` (`VentaService::precioAplicado`), audited as `venta_precio_modificado`. Subtotal/total are always computed server-side. Compare money as strings (`decimal:2`), not floats. `fecha_venta` is user-set but never future.
-- **Stock atomicity**: `lockForUpdate` + `DB::transaction(...,3)` in `VentaService::bloquearYValidarProductos` (rows locked ordered by id), `InventarioService::registrarLote` (same order) and `CajaService::abrir/cerrar/recalcularCajaAbierta`. Group duplicate `producto_id` via `VentaService::agruparCantidades` - repeated lines sum, insufficient aggregated stock throws `ValidationException`. On edit, quantities already in the sale count as available (`$reservadas`).
-- **Caja is by `fecha_venta`**, not `created_at`: `CajaService::totalesPorFecha` + `VentaObserver`. Closed caja blocks sales, edits and annulments: `VentaService::asegurarCajaNoCerrada` and `CajaService::cerrar`.
-- **Caja math RF11**: `saldo_teorico = saldo_inicial + total_ventas - total_gastos - total_retiros` (`CajaService::abrir/cerrar/recalcularCajaAbierta`); `diferencia = saldo_real - saldo_teorico` only on `cerrar`. `total_*` split by `MetodoPago::NOMBRES` (Efectivo, **Nequi**, Transferencia, Tarjeta) in `totalesPorFecha` / `camposTotales`. Cash withdrawals (consignaciones) are `Gasto` rows with `categoria = Gasto::RETIRO`: they lower `saldo_teorico` but go to `total_retiros`, never `total_gastos` (use scopes `soloGastos`/`soloRetiros`).
-- **Tracing RF12**: every stock change creates `MovimientoInventario` with `tipo` enum `inicial|compra|devolucion|ajuste_positivo|venta|ajuste_negativo|merma`, `fecha_movimiento` (transaction date) + `created_at` (exact), `stock_anterior/nuevo`, `user_id`, and an `AuditService::logStockAjuste` entry for inventory changes. Sale edits log only the net difference per product (`venta` or `devolucion`), with `referencia_type/id` pointing to the sale.
-- **Conteo físico** (`Filament/Pages/ConteoFisico` → `InventarioService::registrarConteo`): replaces the paper "inventario final"; counted − system becomes `ajuste_positivo`/`ajuste_negativo` (motivo `Conteo físico: …`), or `inicial` in first-count mode; uncounted products untouched; permission `registrar movimientos`.
-- **RF05**: `InventarioService::stockCalculado` counts only movements since the product's last `inicial` (an `inicial` *sets* stock, it doesn't add).
+- **Server-validated prices (RF04)**: `precio_base` comes from DB; a line's `precio_unitario` may differ from base only within `config('mundococo.precio_venta_min/max')` (`VentaService::precioAplicado`), audited as `venta_precio_modificado`. Subtotal/total always computed server-side; compare money as strings, not floats. `fecha_venta` is user-set but never future.
+- **Stock atomicity**: `lockForUpdate` + `DB::transaction(...,3)` in `VentaService::bloquearYValidarProductos`, `InventarioService::registrarLote` (row locks ordered by id), `CajaService::abrir/cerrar`. Duplicate `producto_id` lines are summed (`VentaService::agruparCantidades`) - insufficient aggregated stock throws `ValidationException`; on edit, quantities already in the sale count as available (`$reservadas`). Never allow negative stock.
+- **One caja per date+sucursal, open or closed** (RF11 + unique index): `CajaService::abrir` rejects any existing caja for that date and catches MySQL 1062/SQLite UNIQUE as the race fallback. Closed caja blocks sales, edits and annulments (`VentaService::asegurarCajaNoCerrada`; `EditCaja` also refuses). Editable caja fields: only `fecha/saldo_inicial/observaciones`, then `recalcularCajaAbierta`.
+- **Totals are never accepted from forms**: `CajaForm` marks every `total*`/`saldo_teorico` field `->dehydrated(false)` and recalculates client-side for display only.
+- **Caja is by `fecha_venta`** (and `Gasto::fecha`), never `created_at`: `CajaService::totalesPorFecha` + `VentaObserver`, and only `vigentes()`.
+- **Caja math (RF11)**: `saldo_teorico = saldo_inicial + total_ventas - total_gastos - total_retiros`; `diferencia = saldo_real - saldo_teorico` only when closing with counted cash. `total_*` split by `MetodoPago::NOMBRES` (Efectivo, **Nequi**, Transferencia, Tarjeta). Cash withdrawals are `Gasto` rows with `categoria = Gasto::RETIRO`: they lower `saldo_teorico` but go to `total_retiros`, never `total_gastos` (scopes `soloGastos/soloRetiros`).
+- **Tracing RF12**: every stock change creates `MovimientoInventario` with `tipo` enum `inicial|compra|devolucion|ajuste_positivo|venta|ajuste_negativo|merma`, `fecha_movimiento` (transaction date) + `created_at` (exact timestamp), `stock_anterior/nuevo`, `user_id`, plus an `AuditService::logStockAjuste` entry. Sale edits log only the net difference per product, referencing the sale.
+- **RF05**: `InventarioService::stockCalculado` counts movements since the product's last `inicial` - an `inicial` *sets* stock, it doesn't add; it's the latest `inicial` **by `fecha_movimiento`** (id as tiebreak), so a count registered later with a past date does not discard the movements after that date.
+- **Conteo físico** (`Filament/Pages/ConteoFisico` → `InventarioService::registrarConteo`): counted − system becomes `ajuste_positivo/ajuste_negativo` (first count = `inicial`); uncounted products untouched; permission `registrar movimientos`.
 - Sales/cajas never deleted. Correct with edit, or `VentaService::anular` (returns stock as `devolucion`, excluded via `vigentes()`, audited).
 
-## Dominio (proyecto de grado - `RF y RNF.docx` manda; los documentos académicos están fuera del repo, ver Referencias)
-- RF06: catálogo real (50 productos, tarifas de la planilla física de la tienda) en `ProductoSeeder::CATALOGO`, stock 0 y costo vacío hasta el primer conteo físico. 4 categorías con nombres exactos (`Helados/Bebidas/Aceites/Productos de Coco`, `CategoriaSeeder.php`); `SimulacionRealMundoCocoTest` rechaza `Postres/Ingredientes`. No renombrar.
-- RF01: precios de venta en el rango de `config/mundococo.php` ($2.000–$95.000) en `ProductoForm` (factories use synthetic values, exempt; a sale at the base price is always accepted); `codigo` único autogenerado.
-- Sin desviaciones declaradas: conflictos entre documentos resueltos en `docs/CUMPLIMIENTO_ANTEPROYECTO.md` §1 (4 métodos de pago con Nequi; precio editable con límites; rol `Operario`). Toda función nueva de cumplimiento agrega su prueba en `tests/Feature/CumplimientoAnteproyectoTest.php`.
-- RNF que afectan código: interfaz y comentarios en español (RNF02); operaciones <3s (RNF01); bcrypt + sesión 2h + auditoría + backup diario (RNF04); parámetros en config (RNF06); 80% cobertura en funciones críticas (RNF10).
+## Dominio (proyecto de grado - `RF y RNF.docx` manda)
+- RF06: real catalog in `ProductoSeeder::CATALOGO` (store's physical price list), seeded idempotently with stock 0 and empty cost until the first physical count. Category names are exact (`Helados/Bebidas/Aceites/Productos de Coco`); `SimulacionRealMundoCocoTest` rejects `Postres/Ingredientes`. Do not rename.
+- Conflicts between documents are resolved in `docs/CUMPLIMIENTO_ANTEPROYECTO.md` (4 payment methods incl. Nequi; price override with limits; rol `Operario`). Every new compliance feature adds its test in `tests/Feature/CumplimientoAnteproyectoTest.php`.
+- RNF reflected in code: UI/comments/tests in Spanish (RNF02); operations <3s (RNF01); bcrypt + 2h session + audit + daily backup, Sanctum tokens expire by default (RNF04); parameters in config (RNF06); REST API paginated + 60 req/min (RNF09); export cells starting with `=+-@\t\r` are neutered with a `'` prefix (Excel formula injection); 80% coverage on critical code (RNF10).
 
 ## Testing Notes
-- Pest + `RefreshDatabase` + `sqlite :memory:`. Factories for all models exist (`database/factories/`). Do not assert hard counts without running suite - see `docs/TESTING_REPORT.md`.
-- Key invariants to preserve (`docs/TESTING_REPORT.md`): no negative stock even with duplicate product lines; client price only within the configured range and audited, subtotal/total never from the client; closed-date sales/edits/annulments rejected; caja uses only `fecha_venta` and only `vigentes()`; `diferencia` only from counted cash at close.
-- Livewire panel tests: `Filament::setCurrentPanel(Filament::getPanel('admin'))`. HTTP panel tests need a user with a role (FilamentUser) and an accepted data policy.
+- Pest + `RefreshDatabase` + `sqlite :memory:`. Factories exist for all models **except `Sucursal`** (create it directly / `Sucursal::principal()`). `CajaFactory`: one caja per date - historical cajas need distinct dates or the unique index fails the test. Do not assert hard counts without running the suite (`docs/TESTING_REPORT.md`).
+- Key invariants to preserve (`docs/TESTING_REPORT.md`): no negative stock even with duplicate lines; client price only within config range and audited, subtotal/total never from the client; sales/edits/annulments on closed-caja dates rejected; caja totals only from server; `diferencia` only from counted cash at close.
+- Livewire panel tests: `Filament::setCurrentPanel(Filament::getPanel('admin'))`. HTTP panel tests need a user with any role (FilamentUser) and an accepted data policy.
 - SQLite stores `date` casts as `Y-m-d 00:00:00`: filter dates with `whereDate`, not `whereBetween` on date strings.
 
 ## References
-- `README.md` (install + operational rules), `docs/MANUAL_TECNICO.md` (config, API, backup, roles), `docs/MANUAL_USUARIO.md`, `docs/IMPLEMENTACION.md` (phase plan), `docs/TESTING_REPORT.md` (invariants), `docs/CUMPLIMIENTO_ANTEPROYECTO.md` (requirement → code → test matrix; read before changing business rules), `quality.yml` (CI contract). Requisitos autoritativos: `Anteproyecto - Mundo Coco.docx`, `RF y RNF.docx` (12 RF + 10 RNF) y `Solución Sistema de Inventario y Facturación Mundo Coco.docx`. Estos documentos viven fuera del repo en `C:\Users\Ryzen 5\Documents\MundoCoco - Documentación\03 Anteproyecto y requisitos`. Prefer executable config (`composer.json` scripts, `phpunit.xml`, `vite.config.js`) when docs conflict.
+- `README.md` (install + operational rules), `docs/MANUAL_TECNICO.md` (config, API, backup, deploy), `docs/TESTING_REPORT.md` (invariants), `docs/CUMPLIMIENTO_ANTEPROYECTO.md` (requirement → code → test matrix; read before changing business rules). Prefer executable config (`composer.json`, `phpunit*.xml`, `quality.yml`) when docs conflict.
+- Requisitos autoritativos: `Anteproyecto - Mundo Coco.docx`, `RF y RNF.docx` (12 RF + 10 RNF), `Solución Sistema de Inventario y Facturación Mundo Coco.docx` - outside the repo at `C:\Users\Ryzen 5\Documents\MundoCoco - Documentación\03 Anteproyecto y requisitos`.

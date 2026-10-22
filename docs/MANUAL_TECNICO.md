@@ -126,10 +126,13 @@ php artisan mundococo:token-api admin@mundococo.com --nombre=contabilidad
 | Método y ruta | Permiso | Respuesta |
 |---|---|---|
 | `GET /api/v1/productos` | ver productos | Productos activos con stock y alerta |
-| `GET /api/v1/ventas?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` | ver ventas | Ventas con detalle, método de pago, sucursal y estado |
+| `GET /api/v1/ventas?desde=AAAA-MM-DD&hasta=AAAA-MM-DD&por_pagina=100` | ver ventas | Ventas con detalle, método de pago, sucursal y estado (paginado; máximo 200 por página) |
 | `GET /api/v1/reportes/{tipo}?desde=…&hasta=…` | ver reportes | Cualquier reporte de `ReporteExportService::TIPOS` en JSON |
 
-Encabezado: `Authorization: Bearer {token}`. Límite: 60 solicitudes por minuto.
+Encabezado: `Authorization: Bearer {token}`. Límite: 60 solicitudes por minuto. Los
+tokens caducan a los 30 días (`SANCTUM_EXPIRATION`, en minutos; `0` = sin caducidad).
+La respuesta de ventas es un paginador estándar de Laravel (`data`, `total`,
+`per_page`, `current_page`), no una lista completa.
 
 ## 8. Calidad
 

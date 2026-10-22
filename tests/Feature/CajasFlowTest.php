@@ -84,10 +84,13 @@ describe('Gestión de Cajas', function () {
     });
 
     it('puede tener múltiples cajas cerradas', function () {
-        Caja::factory(3)->cerrada()->create();
+        // RF11: una caja por fecha; el histórico tiene una por día.
+        Caja::factory(3)->cerrada()
+            ->sequence(fn ($secuencia) => ['fecha' => now()->subDays($secuencia->index + 1)->toDateString()])
+            ->create();
 
         $cajasCerradas = Caja::where('estado', 'cerrada')->count();
 
-        expect($cajasCerradas)->toBeGreaterThanOrEqual(3);
+        expect($cajasCerradas)->toBe(3);
     });
 });

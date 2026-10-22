@@ -26,9 +26,9 @@ class CajaForm
                             ->default(now())
                             ->native(false)
                             ->live()
-                            ->afterStateUpdated(function ($state, callable $set): void {
+                            ->afterStateUpdated(function ($state, callable $set, callable $get): void {
                                 if ($state) {
-                                    self::calcularTotales($state, $set);
+                                    self::calcularTotales($state, $set, $get);
                                 }
                             }),
 
@@ -45,7 +45,7 @@ class CajaForm
                                 if (! $fecha) {
                                     return;
                                 }
-                                self::calcularTotales($fecha, $set);
+                                self::calcularTotales($fecha, $set, $get);
                             }),
                     ]),
 
@@ -59,6 +59,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_nequi')
@@ -67,6 +68,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_transferencias')
@@ -75,6 +77,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_tarjetas')
@@ -83,6 +86,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_ventas')
@@ -91,6 +95,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Se calcula automáticamente'),
 
                         TextInput::make('total_gastos')
@@ -99,6 +104,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Materia prima, servicios, etc.')
                             ->hintColor('danger'),
 
@@ -108,6 +114,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Efectivo que sale de la caja; no es gasto')
                             ->hintColor('warning'),
 
@@ -117,6 +124,7 @@ class CajaForm
                             ->prefix('$')
                             ->default(0)
                             ->readOnly()
+                            ->dehydrated(false)
                             ->hint('Esperado en caja'),
 
                         Textarea::make('observaciones')
@@ -127,7 +135,7 @@ class CajaForm
             ]);
     }
 
-    protected static function calcularTotales(string $fecha, callable $set): void
+    protected static function calcularTotales(string $fecha, callable $set, callable $get): void
     {
         $totales = app(CajaService::class)->totalesPorFecha($fecha);
 
@@ -138,7 +146,10 @@ class CajaForm
         $set('total_ventas', $totales['total']);
         $set('total_gastos', $totales['gastos']);
         $set('total_retiros', $totales['retiros']);
-        // Saldo teórico provisional (sin saldo_inicial); se calcula al abrir/cerrar con saldo inicial
-        $set('saldo_teorico', (float) $totales['total'] - (float) $totales['gastos'] - (float) $totales['retiros']);
+        // RF11: Base + Ventas - Gastos - Retiros (incluye el saldo inicial).
+        $set('saldo_teorico', (float) ($get('saldo_inicial') ?? 0)
+            + (float) $totales['total']
+            - (float) $totales['gastos']
+            - (float) $totales['retiros']);
     }
 }

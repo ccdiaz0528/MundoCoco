@@ -23,7 +23,7 @@ class ReporteService
     // RF08: Inventario actual por categoría
     public function inventarioPorCategoria(): Collection
     {
-        return Categoria::withCount('productos')
+        return Categoria::withCount(['productos' => fn ($q) => $q->where('activo', true)])
             ->with(['productos' => fn ($q) => $q->where('activo', true)])
             ->get()
             ->map(fn (Categoria $cat) => [
@@ -71,7 +71,7 @@ class ReporteService
     }
 
     // RF08: Movimientos por período
-    public function movimientosPorPeriodo(Carbon|string $desde, Carbon|string $hasta, ?int $productoId = null, ?string $tipo = null): Collection
+    public function movimientosPorPeriodo(Carbon|string $desde, Carbon|string $hasta, ?int $productoId = null, ?string $tipo = null, ?int $limite = null): Collection
     {
         $q = MovimientoInventario::with(['producto.categoria', 'user'])
             ->whereBetween('fecha_movimiento', [Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()])
@@ -83,8 +83,21 @@ class ReporteService
         if ($tipo) {
             $q->where('tipo', $tipo);
         }
+        if ($limite !== null) {
+            $q->limit($limite);
+        }
 
         return $q->get();
+    }
+
+    /** RNF09: total del período sin cargar las filas en memoria. */
+    public function contarMovimientosPorPeriodo(Carbon|string $desde, Carbon|string $hasta, ?int $productoId = null, ?string $tipo = null): int
+    {
+        return MovimientoInventario::query()
+            ->whereBetween('fecha_movimiento', [Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()])
+            ->when($productoId, fn ($q) => $q->where('producto_id', $productoId))
+            ->when($tipo, fn ($q) => $q->where('tipo', $tipo))
+            ->count();
     }
 
     // RF09: Ventas diarias por producto

@@ -186,16 +186,40 @@ class InventarioService
     public function stockCalculado(?array $productoIds = null): array
     {
         $tabla = (new MovimientoInventario)->getTable();
+        $inicial = MovimientoInventario::TIPO_INICIAL;
+
+        // Último "inicial" por producto según fecha de la transacción (no por
+        // id: un conteo físico puede registrarse con fecha pasada después de
+        // otras transacciones, y ésas deben seguir contando).
         $ultimoInicial = MovimientoInventario::query()
-            ->where('tipo', MovimientoInventario::TIPO_INICIAL)
-            ->groupBy('producto_id')
-            ->selectRaw('producto_id, MAX(id) as ultimo_id');
+            ->from("{$tabla} as ini")
+            ->where('ini.tipo', $inicial)
+            ->whereNotExists(function ($q) use ($tabla, $inicial): void {
+                $q->from("{$tabla} as otro")
+                    ->whereColumn('otro.producto_id', 'ini.producto_id')
+                    ->where('otro.tipo', $inicial)
+                    ->where(function ($w): void {
+                        $w->whereColumn('otro.fecha_movimiento', '>', 'ini.fecha_movimiento')
+                            ->orWhere(function ($w2): void {
+                                $w2->whereColumn('otro.fecha_movimiento', '=', 'ini.fecha_movimiento')
+                                    ->whereColumn('otro.id', '>', 'ini.id');
+                            });
+                    });
+            })
+            ->selectRaw('ini.producto_id, ini.id as ultimo_id, ini.fecha_movimiento as fecha_base');
 
         $entradas = "'".implode("','", MovimientoInventario::TIPOS_ENTRADA)."'";
 
         return MovimientoInventario::query()
             ->leftJoinSub($ultimoInicial, 'base', 'base.producto_id', '=', "{$tabla}.producto_id")
-            ->where(fn ($q) => $q->whereNull('base.ultimo_id')->orWhereColumn("{$tabla}.id", '>=', 'base.ultimo_id'))
+            ->where(function ($q) use ($tabla): void {
+                $q->whereNull('base.ultimo_id')
+                    ->orWhereColumn("{$tabla}.fecha_movimiento", '>', 'base.fecha_base')
+                    ->orWhere(function ($q2) use ($tabla): void {
+                        $q2->whereColumn("{$tabla}.fecha_movimiento", '=', 'base.fecha_base')
+                            ->whereColumn("{$tabla}.id", '>=', 'base.ultimo_id');
+                    });
+            })
             ->when($productoIds !== null, fn ($q) => $q->whereIn("{$tabla}.producto_id", $productoIds))
             ->groupBy("{$tabla}.producto_id")
             ->selectRaw("{$tabla}.producto_id as producto_id")

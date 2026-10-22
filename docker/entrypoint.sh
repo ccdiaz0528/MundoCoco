@@ -12,5 +12,9 @@ php artisan config:cache --ansi
 php artisan route:cache --ansi
 php artisan view:cache --ansi
 php artisan filament:cache-components --ansi 2>/dev/null || true
+
+# RNF04: backups diarios y limpieza de auditoría (routes/console.php).
+php artisan schedule:work >> storage/logs/scheduler.log 2>&1 &
+
 chown -R www-data:www-data storage bootstrap/cache
 exec apache2-foreground

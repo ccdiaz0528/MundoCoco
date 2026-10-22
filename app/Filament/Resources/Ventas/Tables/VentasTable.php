@@ -76,7 +76,7 @@ class VentasTable
                     ->label('Anular')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('danger')
-                    ->visible(fn (Venta $record): bool => auth()->user()?->can('anular', $record) ?? false)
+                    ->visible(fn (?Venta $record): bool => $record !== null && (auth()->user()?->can('anular', $record) ?? false))
                     ->schema([
                         Textarea::make('motivo_anulacion')
                             ->label('Motivo de la anulación / devolución')

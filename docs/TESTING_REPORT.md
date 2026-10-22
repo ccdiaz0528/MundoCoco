@@ -72,10 +72,11 @@ Nota (2026-10-05): las ejecuciones de GitHub Actions del 2026-09-09, 09-24 y 09-
 - Precio (RF04): el precio base sale de la BD; un precio distinto solo se acepta dentro de `config('mundococo.precio_venta_min/max')` y queda auditado. Subtotal y total nunca vienen del cliente.
 - Ventas, ediciones y anulaciones de fecha con caja cerrada rechazadas (`VentaService::asegurarCajaNoCerrada`, `GastoPolicy`)
 - Caja usa exclusivamente `fecha_venta` (y `Gasto::fecha`), no `created_at`, y solo ventas `vigentes()` (no anuladas)
+- Una sola caja por fecha y sucursal (abierta o cerrada): `CajaService::abrir` la rechaza y el índice único `caja_fecha_sucursal_unique` cierra la carrera; los totales nunca se aceptan del formulario (`CajaForm` los marca `dehydrated(false)`)
 - Diferencia solo con dinero contado al cierre (`CajaService::cerrar`)
 - RF11: `saldo_teorico = saldo_inicial + total_ventas - total_gastos - total_retiros` (un retiro/consignación no es gasto), con Nequi separado en `total_nequi`
 - Trazabilidad completa: todo cambio de stock crea `MovimientoInventario` (tipo, fecha de transacción, cantidad, stock antes/después, usuario) y un registro de auditoría
-- RF05: el stock calculado cuenta desde el último inventario inicial y debe coincidir con `stock_actual`
+- RF05: el stock calculado cuenta desde el último inventario inicial (por `fecha_movimiento`, no por id) y debe coincidir con `stock_actual`
 - RF10: las policies consultan permisos; Operario solo ventas + consulta de inventario, Consultor solo reportes
 - Ley 1581: sin `politica_aceptada_at` no se opera el panel
 

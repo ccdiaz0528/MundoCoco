@@ -118,7 +118,9 @@ class VentaService
             }
 
             $venta->load(['detalles.producto', 'metodoPago']);
-            AuditService::logVentaEditada($venta, $valoresAnteriores);
+            // Sin relaciones: el log guarda el encabezado; el detalle ya está en
+            // valores_anteriores y en venta_detalles (evita duplicar todo el JSON).
+            AuditService::logVentaEditada($venta->withoutRelations(), $valoresAnteriores);
             $this->auditarPreciosModificados($venta, $lineas);
 
             return $venta;
@@ -338,7 +340,9 @@ class VentaService
     private function moverStock(Producto $producto, int $delta, Venta $venta, string $motivo, ?Carbon $fecha = null): void
     {
         $stockAnterior = $producto->stock_actual;
-        Producto::query()->whereKey($producto->id)->increment('stock_actual', $delta);
+        // withTrashed: el producto pudo eliminarse (baja lógica) después de la
+        // venta; el stock igual debe devolverse para que RF05/RF12 cuadren.
+        Producto::withTrashed()->whereKey($producto->id)->increment('stock_actual', $delta);
         $producto->stock_actual = $stockAnterior + $delta;
 
         MovimientoInventario::create([

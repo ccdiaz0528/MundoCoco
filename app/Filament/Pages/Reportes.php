@@ -54,7 +54,7 @@ class Reportes extends Page
         $hasta = $this->hasta ?: Carbon::now()->toDateString();
 
         [$anteriorDesde, $anteriorHasta] = ReporteExportService::periodoAnterior($desde, $hasta);
-        $movimientos = $svc->movimientosPorPeriodo($desde, $hasta);
+        $movimientos = $svc->movimientosPorPeriodo($desde, $hasta, limite: self::MOVIMIENTOS_EN_PANTALLA);
 
         return [
             'inventarioPorCategoria' => $svc->inventarioPorCategoria(),
@@ -66,8 +66,8 @@ class Reportes extends Page
             'productosMasVendidos' => $svc->productosMasVendidos(5, Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()),
             'flujo' => $svc->flujoCajaDiario($hasta),
             'indicadores' => $svc->indicadores($desde, $hasta),
-            'movimientos' => $movimientos->take(self::MOVIMIENTOS_EN_PANTALLA),
-            'totalMovimientos' => $movimientos->count(),
+            'movimientos' => $movimientos,
+            'totalMovimientos' => $svc->contarMovimientosPorPeriodo($desde, $hasta),
             'comparativo' => $svc->comparativoVentas($anteriorDesde, $anteriorHasta, Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()),
             'desde' => $desde,
             'hasta' => $hasta,

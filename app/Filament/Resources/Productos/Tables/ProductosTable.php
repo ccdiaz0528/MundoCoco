@@ -52,7 +52,13 @@ class ProductosTable
                 // RF05: Stock_Total = Inicial + Entradas - Salidas desde los movimientos.
                 TextColumn::make('stock_calculado')
                     ->label('Stock calculado')
-                    ->state(fn (Producto $record): int => app(InventarioService::class)->calcularStockTotal($record))
+                    ->state(function (Producto $record): int {
+                        // Una sola consulta para toda la página (evita N+1).
+                        static $calculados = null;
+                        $calculados ??= app(InventarioService::class)->stockCalculado();
+
+                        return $calculados[$record->id] ?? 0;
+                    })
                     ->color(fn (Producto $record, int $state): string => $state === (int) $record->stock_actual ? 'gray' : 'danger')
                     ->tooltip('Inicial + Entradas - Salidas. En rojo si no coincide con el stock registrado.')
                     ->toggleable(),

@@ -8,6 +8,7 @@ use App\Models\MetodoPago;
 use App\Models\Venta;
 use App\Support\Dinero;
 use Carbon\CarbonInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,28 +20,47 @@ class CajaService
     /** @param array<string, mixed> $atributos */
     public function abrir(array $atributos): Caja
     {
-        return DB::transaction(function () use ($atributos): Caja {
-            $fecha = Carbon::parse($atributos['fecha'] ?? now())->startOfDay();
+        try {
+            return DB::transaction(function () use ($atributos): Caja {
+                $fecha = Carbon::parse($atributos['fecha'] ?? now())->startOfDay();
 
-            if (Caja::query()->whereDate('fecha', $fecha)->where('estado', 'abierta')->lockForUpdate()->exists()) {
-                throw ValidationException::withMessages(['fecha' => 'Ya existe una caja abierta para esta fecha.']);
+                // RF11: una sola caja por fecha, abierta o cerrada.
+                $existente = Caja::query()
+                    ->whereDate('fecha', $fecha)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existente !== null) {
+                    throw ValidationException::withMessages([
+                        'fecha' => $existente->estado === 'abierta'
+                            ? 'Ya existe una caja abierta para esta fecha.'
+                            : 'La caja de esta fecha ya fue cerrada; no se puede abrir otra.',
+                    ]);
+                }
+
+                $totales = $this->totalesPorFecha($fecha);
+                $saldoInicial = $this->aCentavos($atributos['saldo_inicial'] ?? 0, 'saldo_inicial');
+                $saldoTeorico = $this->saldoTeorico($saldoInicial, $totales);
+
+                return Caja::query()->create([
+                    'fecha' => $fecha->toDateString(),
+                    'estado' => 'abierta',
+                    'saldo_inicial' => $this->desdeCentavos($saldoInicial),
+                    ...$this->camposTotales($totales),
+                    'saldo_teorico' => $this->desdeCentavos($saldoTeorico),
+                    'saldo_real' => $this->desdeCentavos($saldoInicial),
+                    'diferencia' => null,
+                    'observaciones' => $atributos['observaciones'] ?? null,
+                ]);
+            }, 3);
+        } catch (QueryException $e) {
+            // Carrera entre dos aperturas: el índice único es la última defensa.
+            if (($e->errorInfo[1] ?? null) === 1062 || str_contains($e->getMessage(), 'UNIQUE constraint failed')) {
+                throw ValidationException::withMessages(['fecha' => 'Ya existe una caja para esta fecha.']);
             }
 
-            $totales = $this->totalesPorFecha($fecha);
-            $saldoInicial = $this->aCentavos($atributos['saldo_inicial'] ?? 0, 'saldo_inicial');
-            $saldoTeorico = $this->saldoTeorico($saldoInicial, $totales);
-
-            return Caja::query()->create([
-                'fecha' => $fecha->toDateString(),
-                'estado' => 'abierta',
-                'saldo_inicial' => $this->desdeCentavos($saldoInicial),
-                ...$this->camposTotales($totales),
-                'saldo_teorico' => $this->desdeCentavos($saldoTeorico),
-                'saldo_real' => $this->desdeCentavos($saldoInicial),
-                'diferencia' => null,
-                'observaciones' => $atributos['observaciones'] ?? null,
-            ]);
-        }, 3);
+            throw $e;
+        }
     }
 
     /** @param array<string, mixed> $datos */

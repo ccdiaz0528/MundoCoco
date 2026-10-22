@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // RNF04: los tokens de la API caducan (30 días por defecto); 0 = sin caducidad.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 60 * 24 * 30),
 
     /*
     |--------------------------------------------------------------------------

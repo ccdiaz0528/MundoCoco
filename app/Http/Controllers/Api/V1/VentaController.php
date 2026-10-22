@@ -4,17 +4,21 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Venta;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Validator;
 
 class VentaController
 {
-    /** Ventas con detalle en un rango de fechas (por defecto, últimos 30 días). */
-    public function index(Request $request): Collection
+    /**
+     * Ventas con detalle en un rango de fechas (por defecto, últimos 30 días).
+     * RNF09: paginado; sin límite, un rango amplio devolvía toda la tabla.
+     */
+    public function index(Request $request): LengthAwarePaginator
     {
-        $rango = Validator::validate($request->only(['desde', 'hasta']), [
+        $rango = Validator::validate($request->only(['desde', 'hasta', 'por_pagina']), [
             'desde' => ['nullable', 'date_format:Y-m-d'],
             'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
+            'por_pagina' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         $query = Venta::query()->with(['metodoPago', 'detalles.producto', 'sucursal']);
@@ -26,8 +30,10 @@ class VentaController
         }
 
         return $query->orderBy('fecha_venta')
-            ->get()
-            ->map(fn (Venta $v) => [
+            ->orderBy('id')
+            ->paginate((int) ($rango['por_pagina'] ?? 100))
+            ->withQueryString()
+            ->through(fn (Venta $v) => [
                 'id' => $v->id,
                 'fecha_venta' => $v->fecha_venta->toIso8601String(),
                 'sucursal' => $v->sucursal?->nombre,
