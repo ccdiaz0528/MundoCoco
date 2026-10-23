@@ -90,7 +90,9 @@ Cada caja representa un día: saldo inicial (base), ventas separadas por **Efect
 
 1. Indica la **fecha** y el **saldo inicial** (dinero en caja al abrir).
 2. Los totales de ventas y gastos del día se calculan solos.
-3. Solo puede existir **una caja abierta por fecha**.
+3. Solo puede existir **una caja por fecha**, abierta o cerrada: si el día ya se cerró, el sistema no deja abrir otra caja para esa fecha.
+
+Mientras la caja está **abierta** puedes corregirla con *Editar*: solo cambian la **fecha**, el **saldo inicial** y las **observaciones**. Los totales y el saldo teórico los recalcula el sistema (no se pueden escribir) y no puedes mover la caja a una fecha que ya tiene otra. Una caja cerrada no se edita.
 
 ### 4.2 Cerrar caja (botón Cerrar caja)
 

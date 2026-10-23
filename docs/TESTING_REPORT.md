@@ -1,15 +1,15 @@
 # Estrategia de pruebas - MundoCoco
 
-La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **174 tests (635 assertions)** en 16,30 s con PHP 8.5.10 (40,20 s en PHP 8.4.26, sin caché de código), 100% verde en ambas versiones. No declarar cantidad vigente sin ejecutar `php artisan test`.
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **181 tests (661 assertions)** en 16,37 s con PHP 8.5.10 (44,42 s en PHP 8.4.26, sin caché de código), 100% verde en ambas versiones. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
-## Estado Actual 2026-10-16
+## Estado Actual 2026-10-22
 
-Repetido en PHP 8.4.26 después de pasar la API v1 a controladores (`f9c7292`):
+Medido en PHP 8.4.26 y 8.5.10 después de la auditoría técnica (`c18cd43`: caja única por fecha, stock con productos eliminados, exportes sin fórmulas, API paginada y tokens con expiración):
 
 ```
-PASS 174 tests (635 assertions)
+PASS 181 tests (661 assertions) en ambas versiones
 vendor/bin/pint --test : verde (PSR-12)
-composer test:cobertura : 92,2 % según Pest (trunca; 92,3 % redondeado), igual que el 2026-10-07
+composer test:cobertura : 92,5 % (935 de 1.011 líneas) en PHP 8.4.26 y 92,7 % (935 de 1.009) en PHP 8.5.10; Pest muestra 92,4 y 92,6 porque trunca
 ```
 
 ## Cobertura de negocio (12 RF + 10 RNF)
@@ -47,7 +47,7 @@ composer test:cobertura : 92,2 % según Pest (trunca; 92,3 % redondeado), igual 
 ### Base Previa (60 tests)
 - `CajaTest` 6: crear caja, abierta saldo_real = inicial, cerrar, totales por método, diferencia
 - `VentaServiceTest` 3: precio confiable servidor, rechaza stock acumulado duplicado, rechaza caja cerrada
-- `CajaServiceTest` 2: impide doble caja fecha, cierra con diferencia desde fecha_venta
+- `CajaServiceTest` 2: impide abrir dos cajas para la misma fecha, cierra con diferencia desde fecha_venta
 - `VentaObserverTest` 2: recalcula importes exactos fecha_venta, quita venta eliminada
 - Modelos: `ProductoTest` 6, `VentaTest` 6, `VentaDetalleTest` 5, `CategoriaTest` 4, `MetodoPagoTest` 4
 - `CajasFlowTest` 7, `InventarioFlowTest` 9, `VentasFlowTest` 5
@@ -64,7 +64,7 @@ npm ci; npm run build    # Vite 8 + Tailwind 4
 
 CI: PHP 8.4 (pcov) + Node 20, `composer install` -> `pint --test` -> `php artisan test` -> cobertura `--min=80` -> `npm ci && npm run build`
 
-Nota (2026-10-05): las ejecuciones de GitHub Actions del 2026-09-09, 09-24 y 09-25 no llegaron a iniciarse ("The job was not started because your account is locked due to a billing issue"), así que no hay evidencia de ejecución en CI. La verificación se ejecutó localmente con PHP 8.5.10 y, desde 2026-10-07, también con PHP 8.4.26 (174 pruebas, 635 aserciones, cobertura 92,3 %); al resolver la facturación el flujo correrá en 8.4.
+Nota (2026-10-05): las ejecuciones de GitHub Actions del 2026-09-09, 09-24 y 09-25 no llegaron a iniciarse ("The job was not started because your account is locked due to a billing issue"), así que no hay evidencia de ejecución en CI. La verificación se ejecutó localmente con PHP 8.5.10 y, desde 2026-10-07, también con PHP 8.4.26 (última medición, 2026-10-22: 181 pruebas, 661 aserciones, cobertura 92,5 %); al resolver la facturación el flujo correrá en 8.4.
 
 ## Casos Críticos que Deben Mantenerse (Invariantes Anteproyecto)
 
@@ -84,7 +84,7 @@ Nota (2026-10-05): las ejecuciones de GitHub Actions del 2026-09-09, 09-24 y 09-
 
 `tests/Feature/CumplimientoAnteproyectoTest.php` agrupa una prueba por brecha cerrada (Nequi, precio y fecha de venta, roles RF10, anulación, borrado lógico, RF02/RF03/RF05, reportes e indicadores OE4, Ley 1581, RNF07 sucursal y API, humo de todas las pantallas del panel). La matriz requisito → código → prueba está en `docs/CUMPLIMIENTO_ANTEPROYECTO.md`.
 
-RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xml`, solo código crítico, mínimo 80 %) con pcov. Medición local (2026-10-07, pcov 1.0.12): **92,3 %** (883 de 957 líneas ejecutables) en PHP 8.4.26, la versión declarada, y 92,4 % (883 de 955) en PHP 8.5.10, sobre el código crítico.
+RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xml`, solo código crítico, mínimo 80 %) con pcov. Medición local (2026-10-22, pcov 1.0.12): **92,5 %** en PHP 8.4.26, la versión declarada, y 92,7 % en PHP 8.5.10, sobre el código crítico.
 
 ## Nuevos Tests Añadidos 2026-09-09
 
@@ -109,6 +109,12 @@ RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xm
 - `tests/Unit/Observers/GastoObserverTest.php` (2): recalcula al crear y al cambiar fecha sin errores
 - Cobertura nueva en `ReportesServiceTest.php`: ventas por categoría agregadas en SQL
 
+## Auditoría técnica 2026-10-22
+
+- `tests/Feature/RegresionAuditoriaTest.php` (6): no abre caja en una fecha ya cerrada; editar una caja no pisa totales ni teórico; anular la venta de un producto eliminado devuelve el stock; una compra posterior a un conteo retroactivo sigue contando (RF05 por `fecha_movimiento`); audita los cambios de precio del producto; los exportes CSV/XLSX no contienen fórmulas
+- `CumplimientoAnteproyectoTest.php` (+1): la API de ventas pagina y acota `por_pagina` (máximo 200, 422 si se excede)
+- `CajasFlowTest.php`: el histórico usa una caja por día (el índice único `caja_fecha_sucursal_unique` rechaza fechas repetidas)
+
 ## Cobertura RNF10
 
 Histórico: hasta el 2026-09-09 el CI usaba `coverage: none` y la cobertura nunca se midió. Desde el 2026-09-24 el CI instala pcov y exige `--min=80` sobre el código crítico (`phpunit.cobertura.xml`). Localmente se mide con pcov 1.0.12 (PHP 8.4.26 y 8.5.10).
@@ -117,7 +123,7 @@ Histórico: hasta el 2026-09-09 el CI usaba `coverage: none` y la cobertura nunc
 
 - RNF01 <3s: simulación jornada 0.09s (incluye 15 ventas + cierre)
 - RNF04 backup diario 02:00 + audit 365d retención (`routes/console.php:10`)
-- RNF10 80% cobertura: 92,3 % medido localmente con pcov en PHP 8.4.26 (`phpunit.cobertura.xml`, 2026-10-07); el CI no ha podido ejecutarse (facturación de GitHub)
+- RNF10 80% cobertura: 92,5 % medido localmente con pcov en PHP 8.4.26 (`phpunit.cobertura.xml`, 2026-10-22); el CI no ha podido ejecutarse (facturación de GitHub)
 
 ## Verificación de RNF contra un servidor real (2026-10-05)
 

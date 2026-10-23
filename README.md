@@ -36,11 +36,13 @@ php artisan db:seed --class=MetodoPagoSeeder   # agrega Nequi
 php artisan db:seed --class=RoleSeeder         # permisos RF10 (Operador → Operario)
 ```
 
+La migración `2026_10_22_000001` crea un índice único de caja por fecha y sucursal; si la base ya tiene cajas duplicadas de una misma fecha, se detiene y lista esas fechas para corregirlas antes de migrar.
+
 ## Reglas operativas
 
 - El precio base sale del servidor; el vendedor puede aplicar otro precio (RF04) solo dentro del rango configurado ($2.000–$95.000) y queda auditado. Subtotal y total los calcula siempre el servidor.
 - El stock se valida y descuenta dentro de transacciones con bloqueo de filas; todo cambio genera un movimiento trazable (RF12) y un registro de auditoría.
-- Una caja abierta acumula ventas de `fecha_venta`, separadas por Efectivo, Nequi, Transferencia y Tarjeta; al cerrar, se registra el dinero contado y la diferencia.
+- Solo hay una caja por fecha y sucursal, abierta o cerrada (RF11): no se puede abrir otra para un día ya cerrado. Una caja abierta acumula ventas de `fecha_venta`, separadas por Efectivo, Nequi, Transferencia y Tarjeta; los totales los calcula siempre el sistema. Al cerrar, se registra el dinero contado y la diferencia.
 - Los retiros de efectivo (consignaciones, entregas al dueño) se registran en Gastos con la categoría "Retiro / consignación": descuentan del saldo de caja pero no cuentan como gasto.
 - El inventario final se hace en **Conteo físico**: se digita lo contado y el sistema registra sobrantes y faltantes como ajustes trazables. El primer conteo se marca como inventario inicial.
 - No se permiten ventas, ediciones ni anulaciones sobre fechas con caja cerrada.
@@ -57,7 +59,7 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-El flujo de GitHub Actions (`.github/workflows/quality.yml`) define estos mismos pasos, pero aún no ha podido ejecutarse por un bloqueo de facturación de la cuenta; hoy la verificación se hace localmente (última: 2026-10-16, PHP 8.4.26, 174 pruebas, 635 aserciones, cobertura 92,3 %).
+El flujo de GitHub Actions (`.github/workflows/quality.yml`) define estos mismos pasos, pero aún no ha podido ejecutarse por un bloqueo de facturación de la cuenta; hoy la verificación se hace localmente (última: 2026-10-22, PHP 8.4.26, 181 pruebas, 661 aserciones, cobertura 92,5 %).
 
 ## Estructura relevante
 

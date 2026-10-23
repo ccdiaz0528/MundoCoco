@@ -25,12 +25,12 @@ Filament (pantallas)  ──►  Servicios (reglas de negocio)  ──►  Model
 
 - **`app/Services/`** contiene toda la lógica transaccional. Las pantallas solo delegan:
   - `VentaService`: `crear`, `actualizar`, `anular` (precio, stock, movimientos, caja y auditoría en una transacción).
-  - `InventarioService`: `registrarInicial`, `adicionarStock`, `retirarStock`, `registrarLote`, `registrarConteo` (cierre con conteo físico: sobrante → `ajuste_positivo`, faltante → `ajuste_negativo`, o `inicial` en el primer conteo; usado por `Filament/Pages/ConteoFisico`, permiso `registrar movimientos`), `stockCalculado` (RF05).
-  - `CajaService`: `abrir`, `cerrar`, `recalcularCajaAbierta`, `totalesPorFecha` (RF11). Saldo teórico = base + ventas − gastos − retiros; los retiros son `Gasto` con `categoria = Gasto::RETIRO` (consignaciones) y se acumulan en `caja.total_retiros`, no en `total_gastos`.
-  - `ReporteService` / `ReporteExportService`: reportes RF08/RF09/RF11 e indicadores OE4; exportación PDF/Excel/CSV.
+  - `InventarioService`: `registrarInicial`, `adicionarStock`, `retirarStock`, `registrarLote`, `registrarConteo` (cierre con conteo físico: sobrante → `ajuste_positivo`, faltante → `ajuste_negativo`, o `inicial` en el primer conteo; usado por `Filament/Pages/ConteoFisico`, permiso `registrar movimientos`), `stockCalculado` (RF05: cuenta los movimientos desde el último `inicial` según `fecha_movimiento`, con el `id` como desempate; así un conteo registrado después con fecha pasada no descarta las transacciones posteriores a esa fecha).
+  - `CajaService`: `abrir`, `cerrar`, `recalcularCajaAbierta`, `totalesPorFecha` (RF11). Solo existe una caja por fecha y sucursal, abierta o cerrada: `abrir` rechaza cualquier caja existente de esa fecha y el índice único `caja_fecha_sucursal_unique` cierra la carrera entre dos aperturas simultáneas. Una caja abierta solo se edita en `fecha`, `saldo_inicial` y `observaciones` (`EditCaja` bloquea la fila y llama a `recalcularCajaAbierta`); los totales y el saldo teórico nunca se aceptan del formulario. Saldo teórico = base + ventas − gastos − retiros; los retiros son `Gasto` con `categoria = Gasto::RETIRO` (consignaciones) y se acumulan en `caja.total_retiros`, no en `total_gastos`.
+  - `ReporteService` / `ReporteExportService`: reportes RF08/RF09/RF11 e indicadores OE4; exportación PDF/Excel/CSV. En CSV y Excel, las celdas de texto que empiezan por `=`, `+`, `-`, `@`, tabulación o retorno de carro se neutralizan con un apóstrofo inicial (inyección de fórmulas); los números no se alteran. La pantalla *Reportes* limita los movimientos listados y obtiene el total con una consulta de conteo (`contarMovimientosPorPeriodo`).
 - **API v1:** `app/Http/Controllers/Api/V1/` (`ProductoController`, `VentaController`, `ReporteController`); solo consultan modelos y servicios, sin lógica de negocio propia.
 - **Dinero:** siempre en centavos enteros (`App\Support\Dinero`); se guarda como `decimal(10,2)`.
-- **Stock:** los servicios lo modifican con el *query builder* y registran su propio `MovimientoInventario`; el `ProductoObserver` solo traza ajustes manuales hechos desde el formulario de producto.
+- **Stock:** los servicios lo modifican con el *query builder* y registran su propio `MovimientoInventario`; el `ProductoObserver` solo traza ajustes manuales hechos desde el formulario de producto y, además, audita los cambios del catálogo (nombre, precios, categoría, stock mínimo, estado) como `producto_actualizado`. `VentaService::moverStock` repone el stock con `Producto::withTrashed()`, de modo que anular una venta de un producto eliminado de forma lógica también cuadra.
 - **Concurrencia:** `DB::transaction(…, 3)` + `lockForUpdate`, bloqueando productos en orden de `id`.
 - **Permisos:** las policies consultan *permisos*, no nombres de rol. `database/seeders/RoleSeeder.php` es la única fuente de verdad.
 - **Sucursales (RNF07):** ventas, cajas, gastos y movimientos tienen `sucursal_id` (trait `PerteneceASucursal`); por defecto, la sucursal principal.
@@ -70,19 +70,21 @@ PHP: el proyecto exige 8.4 o superior (`composer.json`); se desarrolló con 8.5.
 
 Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del `Dockerfile`) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito); ambos proveedores alojan los datos en EE. UU. No es producción: solo se usa con datos reales de la tienda para el piloto de validación del trabajo de grado, con la autorización escrita de la administradora.
 
-- Archivos: `Dockerfile`, `docker/entrypoint.sh` (al arrancar ejecuta `migrate --force --seed`, idempotente, y deja las cachés de Laravel y Filament) y `render.yaml` (Blueprint con las variables de entorno).
+- Archivos: `Dockerfile`, `docker/entrypoint.sh` (al arrancar ejecuta `migrate --force --seed`, idempotente, deja las cachés de Laravel y Filament y lanza `schedule:work` en segundo plano) y `render.yaml` (Blueprint con las variables de entorno).
 - Variables que se definen en el panel de Render (no están en el repositorio): `APP_KEY`, `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. La conexión a TiDB exige TLS (`MYSQL_ATTR_SSL_CA`, ya definida en `render.yaml`) y usa el puerto 4000.
 - `TRUSTED_PROXIES=*` hace que Laravel confíe en el proxy HTTPS del hosting (`bootstrap/app.php`); sin la variable no cambia nada.
-- Límites del plan gratuito: el servicio se duerme tras unos 15 minutos sin uso y al despertar tarda cerca de un minuto en responder; el sistema de archivos no persiste entre reinicios (los datos viven en la base externa, y los respaldos en disco no se conservan). La tarea programada de respaldo no corre en este entorno.
+- Límites del plan gratuito: el servicio se duerme tras unos 15 minutos sin uso y al despertar tarda cerca de un minuto en responder; el sistema de archivos no persiste entre reinicios (los datos viven en la base externa, y los respaldos en disco no se conservan). La tarea programada de respaldo sí se ejecuta (`schedule:work`), pero mientras el servicio duerma no dispara y sus archivos se pierden al reiniciar; no sustituye un respaldo real de la base externa.
 - Despliegue: cada `git push` a `main` redespliega automáticamente.
 
 ### Actualizar una instalación existente
 
 ```powershell
-php artisan migrate                            # incluye caja.total_retiros (2026_10_07_000001)
+php artisan migrate                            # incluye caja.total_retiros (2026_10_07_000001) y el índice único de caja (2026_10_22_000001)
 php artisan db:seed --class=MetodoPagoSeeder   # agrega Nequi sin duplicar
 php artisan db:seed --class=RoleSeeder         # permisos estrictos de RF10 (renombra Operador → Operario)
 ```
+
+La migración `2026_10_22_000001` crea el índice único `caja_fecha_sucursal_unique` (una caja por fecha y sucursal). Si la base ya tiene dos cajas de la misma fecha, la migración se detiene con un error que lista las fechas duplicadas: corrija o fusione esos datos y vuelva a ejecutar `php artisan migrate`.
 
 ## 4. Parámetros configurables (sin tocar código)
 
@@ -94,6 +96,7 @@ Definidos en `config/mundococo.php` y ajustables desde `.env`:
 | `FACTOR_REORDEN` | La sugerencia de reorden repone hasta `stock_minimo × factor` (RF07) | 2 |
 | `CONTACTO_DATOS` | Canal de habeas data en la política de privacidad (Ley 1581) | datos@mundococo.com |
 | `SESSION_LIFETIME` | Minutos de inactividad antes de cerrar la sesión (RNF04) | 120 |
+| `SANCTUM_EXPIRATION` | Minutos de vigencia de los tokens de la API; `0` = sin caducidad (RNF04) | 43200 (30 días) |
 | `ADMIN_*` | Administrador inicial | — |
 
 ## 5. Roles y permisos (RF10)
@@ -143,7 +146,7 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación vigente es local (2026-10-16, PHP 8.4.26: 174 pruebas, 635 aserciones, cobertura 92,3 %).
+CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación vigente es local (2026-10-22, PHP 8.4.26: 181 pruebas, 661 aserciones, cobertura 92,5 %).
 
 ## 9. Diagnóstico
 

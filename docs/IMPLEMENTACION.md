@@ -1,9 +1,9 @@
 # MundoCoco - Implementación Estricta del Anteproyecto
 
-> **Bitácora histórica** de la implementación. Fecha inicio: 2026-09-08 | Última fase: 2026-10-15
-> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 174/174 verde (2026-10-16, PHP 8.4.26) | Pint: verde | Vite: verde
+> **Bitácora histórica** de la implementación. Fecha inicio: 2026-09-08 | Última fase: 2026-10-22
+> Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 181/181 verde (2026-10-22, PHP 8.4.26) | Pint: verde | Vite: verde
 >
-> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **174 pruebas** y cobertura del **92,3 %**.
+> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **181 pruebas** y cobertura del **92,5 %**.
 
 ---
 
@@ -21,7 +21,7 @@
 | 7 | Pruebas funcionales completas + calidad | ✅ | 2026-09-09 | 84 tests, `vendor/bin/pint --test` verde, `npm run build` verde |
 | 8 | Cierre de cumplimiento estricto RF/RNF (auditoría externa) | ✅ | 2026-09-09 | 103 tests, backup real, export PDF/XLSX, código producto, Fase 8 abajo |
 
-**Tests finales:** 174 passed (635 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
+**Tests finales:** 181 passed (661 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
 
 ---
 
@@ -232,6 +232,19 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 - [x] API v1 movida de `routes/api.php` a `app/Http/Controllers/Api/V1/` sin cambiar rutas, permisos ni respuestas
 - [x] Quitados restos de la plantilla de Laravel (comando `inspire`, helpers de ejemplo en `tests/Pest.php`)
 - [ ] Validación OE4 con la administradora (piloto remoto de 1 o 2 días, encuesta anónima en Google Forms): pendiente
+
+### Fase 13 - Auditoría técnica (2026-10-22)
+
+Hallazgos de una auditoría del código, corregidos en `c18cd43` (pruebas en `tests/Feature/RegresionAuditoriaTest.php`):
+
+- [x] RF11: una sola caja por fecha y sucursal, abierta o cerrada. `CajaService::abrir` rechaza cualquier caja existente y la migración `2026_10_22_000001` crea el índice único `caja_fecha_sucursal_unique` (se detiene si ya hay fechas duplicadas); `EditCaja` solo permite editar fecha, saldo inicial y observaciones y recalcula; los totales del formulario ya no se aceptan (`dehydrated(false)`) y el teórico del formulario incluye el saldo inicial
+- [x] RF05: `stockCalculado` toma el último `inicial` por `fecha_movimiento` (con `id` de desempate), no por `id`; la columna *Stock calculado* se obtiene con una sola consulta por página (sin N+1)
+- [x] Anular una venta de un producto eliminado de forma lógica devuelve el stock (`Producto::withTrashed()` en `VentaService::moverStock`)
+- [x] RNF04: `ProductoObserver` audita los cambios de catálogo (`producto_actualizado`); los tokens de la API caducan (`SANCTUM_EXPIRATION`, 30 días por defecto); el contenedor de demostración ejecuta `schedule:work` para el respaldo diario
+- [x] RNF09: `GET /api/v1/ventas` paginado (`por_pagina` 1-200, 100 por defecto); *Reportes* limita los movimientos en pantalla y cuenta el total en SQL; la auditoría de venta editada ya no duplica el detalle
+- [x] Exportes CSV/XLSX neutralizan celdas que empiezan por `=+-@` (inyección de fórmulas); el reporte de inventario por categoría cuenta solo productos activos
+- [x] Retirado el plugin de Spatie para Filament comentado en `AdminPanelProvider`
+- [x] Tests 181/181 (661 assertions), cobertura 92,5 % en PHP 8.4.26
 
 ---
 
