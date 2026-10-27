@@ -4,6 +4,8 @@ use App\Filament\Pages\ConsentimientoDatos;
 use App\Filament\Pages\ConteoFisico;
 use App\Filament\Pages\Reportes;
 use App\Filament\Resources\Movimientos\Pages\CreateMovimiento;
+use App\Filament\Resources\Users\Pages\EditUser;
+use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Widgets\StockCritico;
 use App\Models\AuditLog;
 use App\Models\Caja;
@@ -23,6 +25,7 @@ use Database\Seeders\MetodoPagoSeeder;
 use Database\Seeders\ProductoSeeder;
 use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
+use Filament\Notifications\Livewire\Notifications;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
@@ -156,6 +159,27 @@ describe('RF10 roles estrictos: Administrador, Operario, Consultor', function ()
             ->and($admin->can('viewAny', Caja::class))->toBeTrue()
             ->and($admin->can('create', MovimientoInventario::class))->toBeTrue()
             ->and($admin->can('ver auditoria'))->toBeTrue();
+    });
+
+    it('impide eliminar la cuenta propia incluso en una selección masiva', function () {
+        $admin = ($this->usuario)('Admin');
+        $otro = ($this->usuario)('Operario');
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        Livewire::test(EditUser::class, ['record' => $admin->getRouteKey()])
+            ->assertActionHidden('delete');
+
+        Livewire::test(ListUsers::class)
+            ->callTableBulkAction('delete', [$admin, $otro]);
+
+        $notificaciones = new Notifications;
+        $notificaciones->mount();
+        expect($notificaciones->notifications->last()->getBody())
+            ->toContain('No puedes eliminar tu propia cuenta.');
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+        $this->assertDatabaseMissing('users', ['id' => $otro->id]);
     });
 
     it('renombra el rol Operador existente conservando a sus usuarios', function () {

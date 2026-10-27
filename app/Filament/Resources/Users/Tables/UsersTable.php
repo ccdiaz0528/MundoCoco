@@ -49,7 +49,10 @@ class UsersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->label('Eliminar seleccionados'),
+                    DeleteBulkAction::make()
+                        ->label('Eliminar seleccionados')
+                        ->authorizeIndividualRecords()
+                        ->missingBulkAuthorizationFailureNotificationMessage('No puedes eliminar tu propia cuenta.'),
                 ]),
             ]);
     }
