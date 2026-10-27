@@ -23,7 +23,7 @@ composer test:cobertura : 92,5 % (935 de 1.011 líneas) en PHP 8.4.26 y 92,7 % (
 ### RF11 Caja Diaria con Gastos (5 tests) - `CajaConGastosTest.php`
 - saldo_teorico = Base + Ventas - Gastos (100k+80k-30k=150k)
 - cierre con diferencia 0, detecta faltante -1000 y sobrante +1000
-- bloquea gastos en caja cerrada (fecha_venta), totalesPorFecha incluye gastos segregados
+- comprueba la consulta de caja cerrada, sin ejecutar el guardado de gastos desde el panel; `totalesPorFecha` incluye gastos segregados
 - `CajaService.php:42` → `total_gastos` + `saldo_teorico`, `GastoObserver.php:10` recalcula
 
 ### RF12 Trazabilidad Completa (4 tests) - `TrazabilidadTest.php`
@@ -133,5 +133,14 @@ Medido en un entorno aislado (copia del proyecto con su propia base MySQL 8.4.3 
 - **Hallazgo corregido:** `/admin/reportes` tardaba 2,4–3,0 s (hasta 3,4 s) por dibujar todos los movimientos del periodo; ahora muestra los 200 más recientes (`Reportes::MOVIMIENTOS_EN_PANTALLA`), informa el total y la exportación sigue completa (≈0,9–1,0 s).
 - **RNF09 (BD < 100 MB):** 0,89 MB inicial con el catálogo de demostración de 42 productos (1,00 MB con el catálogo real de 50 productos, cifra que usa el Trabajo de Grado); 3,13 MB con 200 productos y 2.812 movimientos.
 - **RNF04 (sesión de 2 h):** con `SESSION_DRIVER=database`, sesión activa a los 119 min de inactividad y cerrada (redirige a login) a los 121 min. Además `RequisitosNoFuncionalesTest` verifica `session.lifetime = 120` y bcrypt.
-- **RNF03:** Chrome 154 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox 158 (Puppeteer sobre WebDriver BiDi, SQLite de demostración): las mismas 35 comprobaciones sin desbordamiento ni errores, más un flujo de venta (selectores, rechazo por stock insuficiente, venta válida, listado, reportes PDF/XLSX) con 10 de 10 pasos correctos (2026-10-16). Edge NO probado (no está instalado en el equipo de pruebas; comparte motor con Chrome). Safari descartado (no hay equipo Apple).
-- **RNF08:** solo MySQL 8.4.3 y SQLite (pruebas); PostgreSQL y SQL Server NO probados.
+- **RNF03:** Chrome 154 sobre MySQL 8.4.3 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox 158 (Puppeteer sobre WebDriver BiDi, SQLite de demostración): las mismas 35 comprobaciones sin desbordamiento ni errores, más un flujo de venta (selectores, rechazo por stock insuficiente, venta válida, listado, reportes PDF/XLSX) con 10 de 10 pasos correctos (2026-10-16). El 26/10/2026 uno de los autores confirmó que el demo de Render abre en Safari desde su iPhone personal; se registra como comprobación de acceso, sin equipararla a la batería de siete pantallas. Edge no se verificó. RNF03 permanece parcialmente cumplido.
+- **RNF08:** MySQL 8.4.3 es el único motor comprobado para operación. SQLite en memoria se utilizó solo en la suite automatizada; PostgreSQL y SQL Server no se probaron. RNF08 permanece parcialmente cumplido frente al requisito original.
+
+Comprobación adicional del 26/10/2026 en la instalación local configurada con MySQL: Chrome 156 y Firefox 158 abrieron `/admin/login` con respuesta HTTP 200, mostraron el campo de contraseña y no produjeron errores JavaScript en esa pantalla. Es una prueba de ingreso, no una repetición del flujo completo de venta ni una verificación de Edge.
+
+## Hallazgo de edición de gastos (27/10/2026)
+
+Una prueba aislada de Livewire con SQLite en memoria intentó guardar un gasto con fecha abierta y moverlo a una fecha con caja cerrada. En ambos casos, `EditGasto::afterSave` recibió la fecha original como `null`, produjo un `TypeError` y la transacción revirtió el cambio. La política restringe la edición de un gasto cuya fecha original ya está cerrada; la nueva fecha no tiene una validación equivalente antes del guardado. La edición requiere corregirse y verificarse con pruebas reales del panel. Esta comprobación no modifica los totales históricos de la suite del 22/10/2026.
+
+
+**Corrección posterior (27/10/2026):** se eliminó el error de guardado y se validan ambas fechas frente a cajas cerradas. `GastosPanelTest` comprueba edición válida, recálculo de las dos cajas, rechazo sin cambios parciales, separación de retiros y prohibición de editar gastos de caja cerrada. La suite completa pasó con **187 pruebas y 699 aserciones**, con SQLite en memoria; Pint y la compilación también pasaron. No se comprobó concurrencia en MySQL en esta ejecución. Las métricas de cobertura del 22/10/2026 siguen siendo históricas.

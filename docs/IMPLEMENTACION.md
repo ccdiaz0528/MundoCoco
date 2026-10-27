@@ -3,7 +3,10 @@
 > **Bitácora histórica** de la implementación. Fecha inicio: 2026-09-08 | Última fase: 2026-10-22
 > Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 181/181 verde (2026-10-22, PHP 8.4.26) | Pint: verde | Vite: verde
 >
-> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **181 pruebas** y cobertura del **92,5 %**.
+> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **187 pruebas** (27/10/2026) y cobertura histórica del **92,5 %** (22/10/2026).
+> La marca de implementación de RNF03 o RNF08 en esta bitácora no certifica todos los entornos del requisito original. La verificación de entrega acredita Chrome y Firefox en las condiciones descritas y registra acceso al demo desde Safari en un iPhone personal, según uno de los autores; Edge sigue pendiente. MySQL se comprobó para operación y SQLite se usó solo para pruebas. RNF03 y RNF08 siguen parciales.
+> Estado actual de los RNF parciales: **RNF02 Usabilidad** (no se midió el manejo básico frente al límite de dos horas de capacitación); **RNF03 Compatibilidad** (Edge pendiente; Safari cuenta con acceso al demo comunicado desde un iPhone, no con la batería completa); **RNF08 Portabilidad** (PostgreSQL y SQL Server sin pruebas de operación); **RNF10 Cumplimiento** (sin evaluación formal completa de estándares web). La cobertura crítica de RNF10 se midió localmente: 92,5 % el 22/10/2026.
+> **Corrección del 27/10/2026:** la edición de gastos guarda en cajas abiertas y rechaza fechas con caja cerrada. La suite completa pasó con 187 pruebas; las cifras anteriores conservan su fecha histórica. Detalles en `TESTING_REPORT.md`.
 
 ---
 
@@ -21,7 +24,7 @@
 | 7 | Pruebas funcionales completas + calidad | ✅ | 2026-09-09 | 84 tests, `vendor/bin/pint --test` verde, `npm run build` verde |
 | 8 | Cierre de cumplimiento estricto RF/RNF (auditoría externa) | ✅ | 2026-09-09 | 103 tests, backup real, export PDF/XLSX, código producto, Fase 8 abajo |
 
-**Tests finales:** 181 passed (661 assertions) | **Cobertura RF/RNF:** 12 RF + 10 RNF (ver `CUMPLIMIENTO_ANTEPROYECTO.md` §1 decisiones y §6 pendientes del equipo, y `TESTING_REPORT.md` nota RNF10) | **Cumplimiento anteproyecto:** 100% con 0 desviaciones declaradas
+**Tests finales al 22/10/2026:** 181 passed (661 assertions) | **Estado documental de requisitos:** 12 RF con evidencia; 6 RNF cumplidos y 4 parcialmente cumplidos (ver `CUMPLIMIENTO_ANTEPROYECTO.md` y `TESTING_REPORT.md`).
 
 ---
 
@@ -29,7 +32,7 @@
 
 ### 1.1 Objetivos (Pág 2) vs Implementación
 
-**OG:** Sistema web que agilice stock + ventas + cuadre caja con métodos pago → **✅ 100%**
+**OG:** Sistema web para stock, ventas y cuadre de caja con métodos de pago → funcionalidades implementadas; el impacto en tiempo, precisión y pérdidas no quedó cuantificado por el piloto.
 - `app/Services/VentaService.php:22 crear()`, `CajaService.php:42`, `InventarioService.php:14` + `ReporteService.php:12`
 - Filament `app/Filament/Resources/{Productos,Ventas,Cajas,Movimientos,Gastos}/`
 - `database/migrations/2026_04_15_*` + nuevas `2026_09_09_*`
@@ -40,7 +43,7 @@
 
 **OE3 Funcionalidades integradas:** RF11 con gastos `CajaService::totalesPorFecha():98` incluye `Gasto::whereDate()->sum('monto')`, RF05 `InventarioService::calcularStockTotal():66`, RF12 `MovimientoInventario` trazable.
 
-**OE4 Validación:** verificación técnica con Pest (hoy 174 pruebas) + `SimulacionRealMundoCocoTest.php` (jornada de 15 ventas, gastos, cierre con diferencia 0, tiempo <3s RNF01). La validación con usuarios en la operación real está pendiente (piloto remoto, ver Fase 12).
+**OE4 Validación:** 181 pruebas automatizadas y simulación de una jornada en `SimulacionRealMundoCocoTest.php`. Se realizó un piloto remoto con la administradora el 20 y 21/10/2026, con una respuesta de encuesta y confirmación por correo. Por una participante, dos días y ausencia de línea base comparable, el objetivo permanece parcialmente validado.
 
 ### 1.2 Brechas Iniciales → Resueltas
 
@@ -213,7 +216,7 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 - [x] RNF06: parámetros en `config/mundococo.php`; `docs/MANUAL_TECNICO.md`
 - [x] RNF07: modelo `Sucursal` y API REST v1 de solo lectura con Sanctum
 - [x] RNF08: SQL con variantes para SQL Server; respaldo portable
-- [x] RNF10: cobertura medida en CI (pcov, `--min=80` sobre código crítico); Ley 1581 con consentimiento informado obligatorio
+- [x] RNF10: cobertura configurada en CI con pcov y mínimo del 80 % sobre código crítico; medición efectiva local de 92,5 % el 22/10/2026 (el CI no se ejecutó por bloqueo de facturación). Ley 1581 con consentimiento informado obligatorio.
 - [x] Errores previos encontrados: `CajaForm` usaba `TextInput::color()` (500 al abrir caja), CI con PHP 8.3 incompatible con el `composer.lock` (Symfony 8 exige 8.4), manual de usuario truncado
 - [x] Tests 161/161 al cierre de la fase (2026-09-25); 166 tras las pruebas de RNF del 2026-10-05
 
@@ -231,7 +234,7 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 - [x] Despliegue de prueba gratuito en Render (Docker) + TiDB Cloud: `Dockerfile`, `docker/entrypoint.sh`, `render.yaml`; `TRUSTED_PROXIES` en `bootstrap/app.php` (ver `MANUAL_TECNICO.md` §3)
 - [x] API v1 movida de `routes/api.php` a `app/Http/Controllers/Api/V1/` sin cambiar rutas, permisos ni respuestas
 - [x] Quitados restos de la plantilla de Laravel (comando `inspire`, helpers de ejemplo en `tests/Pest.php`)
-- [ ] Validación OE4 con la administradora (piloto remoto de 1 o 2 días, encuesta anónima en Google Forms): pendiente
+- [x] Validación OE4 con la administradora: piloto remoto realizado el 20 y 21/10/2026, encuesta anónima con una respuesta y correo de confirmación. Alcance parcial por ausencia de línea base comparable.
 
 ### Fase 13 - Auditoría técnica (2026-10-22)
 
@@ -273,8 +276,8 @@ Hallazgos de una auditoría del código, corregidos en `c18cd43` (pruebas en `te
 
 | Indicador | Meta | Medido en Proyecto | Evidencia |
 |-----------|------|--------------------|-----------|
-| Pérdidas -15/-30% | Reducir con trazabilidad | 0 pérdidas no trazadas: todo movimiento logueado | `TrazabilidadTest.php` + `MovimientoInventario` |
-| Tiempo -30/-40% | Venta <3s | Simulación 15 ventas + cierre en <3s (0.09s) | `SimulacionRealMundoCocoTest.php:10` elapsed <3.0 |
+| Pérdidas -15/-30% | Reducir con trazabilidad | Los movimientos registrados dejan trazabilidad; no se cuantificaron pérdidas que no se hubieran registrado. | `TrazabilidadTest.php` + `MovimientoInventario` |
+| Tiempo -30/-40% | Venta <3s | La simulación automatizada de 15 ventas y cierre se compara con un límite de 3 s; no mide la duración del trabajo de una persona. | `SimulacionRealMundoCocoTest.php:10` elapsed <3.0 |
 | Ventas perdidas agotado | Minimizar | Alerta tiempo real stockBajo en dashboard + valorización | `StatsOverview.php:41` + `Reportes` stock bajo |
 | Precisión reporte financiero | 100% | Caja diferencia = real - teórico, cierre bloquea ventas | `CajaConGastosTest.php` 0 diferencia ok |
 | Conciliación por método | 100% | Efectivo/Transfer/Tarjeta segregado | `CajaService::totalesPorFecha` + `CajasTable` |

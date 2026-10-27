@@ -13,7 +13,7 @@ class ListMetodoPagos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label('Nuevo mÈtodo de pago'),
+            CreateAction::make()->label('Nuevo m√©todo de pago'),
         ];
     }
 }

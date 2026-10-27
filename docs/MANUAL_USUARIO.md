@@ -7,7 +7,7 @@
 
 ## 1. Ingreso al sistema
 
-1. Abre el navegador (se probó en Chrome y Firefox; Edge debería funcionar igual por compartir motor con Chrome) y entra a `/admin`.
+1. Abre el navegador en Chrome o Firefox, los dos navegadores comprobados, y entra a `/admin`.
 2. Escribe tu **correo electrónico** y tu **contraseña**.
 3. Pulsa **Iniciar sesión**.
 
@@ -41,7 +41,7 @@
 
 > Antes del primer día de uso, el Administrador registra el **inventario inicial** con un conteo físico (sección 6.5). Hasta entonces los productos tienen stock 0 y aparecen en stock bajo.
 
-> Regla de oro: **una fecha con caja cerrada queda bloqueada**. Ya no se pueden registrar, editar ni anular ventas ni gastos de ese día. Revisa bien antes de cerrar.
+> Una caja cerrada bloquea registrar, editar o anular ventas de su fecha y registrar gastos nuevos para ella. Revisa las operaciones antes de cerrar.
 
 ---
 
@@ -116,7 +116,8 @@ Una diferencia **0** indica cuadre perfecto; **negativa**, que falta dinero; **p
 Registra lo que sale de caja: **materia prima, servicios, transporte u otros**, con fecha, descripción, categoría, monto y observaciones.
 
 - Los gastos **restan del saldo teórico** de la caja de su fecha.
-- No se pueden registrar, editar ni eliminar gastos de una fecha con caja cerrada.
+- El registro de un gasto nuevo se rechaza si la caja de esa fecha está cerrada.
+- Puedes editar gastos de cajas abiertas. No puedes editarlos ni moverlos a una fecha con caja cerrada.
 
 ### 5.1 Retiros y consignaciones
 

@@ -3,25 +3,41 @@
 namespace App\Filament\Resources\Gastos\Pages;
 
 use App\Filament\Resources\Gastos\GastoResource;
-use App\Services\CajaService;
+use App\Models\Caja;
+use App\Models\Gasto;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class EditGasto extends EditRecord
 {
     protected static string $resource = GastoResource::class;
 
-    private ?Carbon $fechaOriginal = null;
-
-    protected function beforeFill(): void
+    protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        $this->fechaOriginal = Carbon::parse($this->record->fecha);
-    }
+        $gasto = Gasto::query()->lockForUpdate()->findOrFail($record->getKey());
+        Gate::authorize('update', $gasto);
 
-    protected function afterSave(): void
-    {
-        $svc = app(CajaService::class);
-        $svc->recalcularCajaAbierta($this->fechaOriginal);
-        $svc->recalcularCajaAbierta($this->record->fecha);
+        $fechaOriginal = $gasto->fecha->toDateString();
+        $fechaNueva = $data['fecha'];
+        $cajas = Caja::query()
+            ->where(fn (Builder $query) => $query->whereDate('fecha', $fechaOriginal)->orWhereDate('fecha', $fechaNueva))
+            ->orderBy('fecha')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        if ($cajas->contains('estado', 'cerrada')) {
+            throw ValidationException::withMessages([
+                'data.fecha' => 'No se pueden editar gastos en una fecha con caja cerrada.',
+            ]);
+        }
+
+        $gasto->update($data);
+        $this->record = $gasto;
+
+        return $gasto;
     }
 }

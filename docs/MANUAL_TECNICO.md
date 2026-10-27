@@ -13,7 +13,7 @@ Documento de mantenimiento (RNF06). Para el uso diario ver `MANUAL_USUARIO.md`; 
 | API | Laravel Sanctum (tokens) |
 | PDF / Excel | DomPDF / PhpSpreadsheet |
 | Pruebas | Pest 4 (SQLite en memoria) |
-| Base de datos | MySQL (producción); compatible con PostgreSQL, SQL Server y SQLite |
+| Base de datos | MySQL (único motor comprobado para operación); SQLite en memoria solo para pruebas automatizadas. PostgreSQL y SQL Server no verificados. |
 
 ## 2. Arquitectura
 
@@ -68,7 +68,7 @@ PHP: el proyecto exige 8.4 o superior (`composer.json`); se desarrolló con 8.5.
 
 ### Despliegue de demostración en la nube (no es producción)
 
-Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Está en Render (plan gratuito, imagen Docker del `Dockerfile`) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito); ambos proveedores alojan los datos en EE. UU. No es producción: solo se usa con datos reales de la tienda para el piloto de validación del trabajo de grado, con la autorización escrita de la administradora.
+Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la tienda existe un despliegue **de prueba y gratuito**: https://mundococo-demo.onrender.com/admin/login. Funcionó para la capacitación y el piloto del 20 y 21/10/2026. Está en Render (plan gratuito, imagen Docker del `Dockerfile`) con base de datos MySQL compatible en TiDB Cloud Serverless (plan gratuito); ambos proveedores alojan los datos en EE. UU. No es producción: solo se usa con datos reales de la tienda para el piloto de validación del trabajo de grado, con la autorización escrita de la administradora.
 
 - Archivos: `Dockerfile`, `docker/entrypoint.sh` (al arrancar ejecuta `migrate --force --seed`, idempotente, deja las cachés de Laravel y Filament y lanza `schedule:work` en segundo plano) y `render.yaml` (Blueprint con las variables de entorno).
 - Variables que se definen en el panel de Render (no están en el repositorio): `APP_KEY`, `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. La conexión a TiDB exige TLS (`MYSQL_ATTR_SSL_CA`, ya definida en `render.yaml`) y usa el puerto 4000.
@@ -113,7 +113,7 @@ Para crear un rol nuevo: *Seguridad → Roles*; las pantallas respetan los permi
 
 `routes/console.php` (requiere `php artisan schedule:work` o un cron con `schedule:run`):
 
-- `backup:database` diario a las 02:00: volcado SQL en `storage/app/backups`, retención de 30 días. En MySQL y SQLite incluye estructura y datos; en PostgreSQL y SQL Server solo datos (la estructura se recrea con `php artisan migrate`).
+- `backup:database` diario a las 02:00: volcado SQL en `storage/app/backups`, retención de 30 días. El respaldo de operación se verificó con MySQL. La implementación contempla otros motores, pero su funcionamiento operativo no se verificó.
 - Limpieza de auditoría con más de 365 días.
 
 Para restaurar un respaldo de MySQL: `mysql -u USUARIO -p mundococo < storage/app/backups/backup-AAAA-MM-DD_HHMMSS.sql`.

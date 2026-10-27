@@ -4,7 +4,7 @@ Sistema administrativo para una tienda: categorías, productos, ventas, métodos
 
 ## Requisitos
 
-- PHP 8.4 o superior (el `composer.lock` usa Symfony 8) con extensiones PDO y SQLite/MySQL.
+- PHP 8.4 o superior (el `composer.lock` usa Symfony 8) con PDO MySQL para operar; PDO SQLite solo para ejecutar las pruebas automatizadas.
 - Composer 2.
 - Node.js 20 o superior y npm.
 
