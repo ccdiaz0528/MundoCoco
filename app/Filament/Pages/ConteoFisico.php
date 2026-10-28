@@ -40,11 +40,14 @@ class ConteoFisico extends Page
 
     public bool $esInicial = false;
 
+    /** Buscador del conteo: filtra la lista por nombre o código. */
+    public string $busqueda = '';
+
     public ?string $fecha = null;
 
     public ?string $observaciones = null;
 
-    /** @var array<int, array{nombre: string, sistema: int, contado: int, diferencia: int, valor: float}> */
+    /** @var array<int, array{codigo: string, nombre: string, sistema: int, contado: int, diferencia: int, valor: float}> */
     public array $resultado = [];
 
     public bool $resultadoInicial = false;
@@ -68,6 +71,7 @@ class ConteoFisico extends Page
         // En el inventario inicial no hay diferencia: se valoriza lo contado.
         $this->resultadoInicial = $this->esInicial;
         $this->resultado = $filas->map(fn (array $fila) => [
+            'codigo' => $fila['producto']->codigo,
             'nombre' => $fila['producto']->nombre,
             'sistema' => $fila['sistema'],
             'contado' => $fila['contado'],
@@ -89,10 +93,16 @@ class ConteoFisico extends Page
 
     public function getViewData(): array
     {
+        $termino = trim($this->busqueda);
+
         /** @var Collection<string, Collection<int, Producto>> $porCategoria */
         $porCategoria = Producto::query()
             ->with('categoria')
             ->where('activo', true)
+            // Buscador: nombre o código, para no recorrer toda la lista contando.
+            ->when($termino !== '', fn ($query) => $query->where(
+                fn ($query) => $query->where('nombre', 'like', "%{$termino}%")->orWhere('codigo', 'like', "%{$termino}%")
+            ))
             ->orderBy('categoria_id')
             ->orderBy('nombre')
             ->get()
@@ -100,6 +110,9 @@ class ConteoFisico extends Page
 
         return [
             'porCategoria' => $porCategoria,
+            'buscando' => $termino !== '',
+            'mostrados' => (int) $porCategoria->flatten(1)->count(),
+            'total' => Producto::query()->where('activo', true)->count(),
         ];
     }
 

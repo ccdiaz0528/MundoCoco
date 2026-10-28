@@ -8,6 +8,7 @@
         .cf-tabla th { padding: 8px 10px; border-bottom: 2px solid #e5e7eb; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .65; text-align: left; }
         .cf-tabla td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; }
         .cf-tabla .num { text-align: right; white-space: nowrap; }
+        .cf-codigo { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; opacity: .6; white-space: nowrap; }
         .cf-tabla .grupo td { padding-top: 14px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #d97706; border-bottom: 1px solid #e5e7eb; }
         .cf-input { width: 90px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: transparent; color: inherit; text-align: right; }
         .cf-label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; opacity: .7; }
@@ -43,10 +44,31 @@
 
         <x-filament::section style="margin-top:16px">
             @error('conteos') <p class="cf-error" style="margin-top:0">{{ $message }}</p> @enderror
+
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:260px">
+                    <label class="cf-label" for="cf-buscar" style="margin:0;white-space:nowrap">Buscar producto</label>
+                    <input id="cf-buscar" type="search" wire:model.live.debounce.150ms="busqueda"
+                        wire:keydown.enter.prevent
+                        maxlength="80" autocomplete="off"
+                        placeholder="Nombre o código…"
+                        class="cf-input" style="width:100%;max-width:320px;text-align:left" />
+                    @if ($datos['buscando'])
+                        <button type="button" wire:click="$set('busqueda', '')" class="cf-input"
+                            style="width:auto;text-align:left;cursor:pointer">Limpiar</button>
+                    @endif
+                </div>
+                <div style="font-size:12px;opacity:.7">
+                    <span wire:loading.delay.shortest wire:target="busqueda">Buscando…</span>
+                    Mostrando {{ $datos['mostrados'] }} de {{ $datos['total'] }} productos activos
+                </div>
+            </div>
+
             <div class="cf-scroll">
                 <table class="cf-tabla">
                     <thead>
                         <tr>
+                            <th>Código</th>
                             <th>Producto</th>
                             <th class="num">Stock sistema</th>
                             <th class="num">Contado</th>
@@ -55,9 +77,10 @@
                     </thead>
                     <tbody>
                         @forelse ($datos['porCategoria'] as $categoria => $productos)
-                            <tr class="grupo"><td colspan="4">{{ $categoria }}</td></tr>
+                            <tr class="grupo"><td colspan="5">{{ $categoria }}</td></tr>
                             @foreach ($productos as $producto)
-                                <tr wire:key="conteo-{{ $producto->id }}" x-data="{ v: '' }" x-on:conteo-registrado.window="v = ''">
+                                <tr wire:key="conteo-{{ $producto->id }}" x-data="{ v: @js((string) ($conteos[$producto->id] ?? '')) }" x-on:conteo-registrado.window="v = ''">
+                                    <td class="cf-codigo">{{ $producto->codigo }}</td>
                                     <td>{{ $producto->nombre }}</td>
                                     <td class="num">{{ $producto->stock_actual }}</td>
                                     <td class="num">
@@ -76,7 +99,11 @@
                                 </tr>
                             @endforeach
                         @empty
-                            <tr><td colspan="4" style="opacity:.65">No hay productos activos.</td></tr>
+                            <tr>
+                                <td colspan="5" style="opacity:.65">
+                                    {{ $datos['buscando'] ? 'Ningún producto coincide con «'.$busqueda.'».' : 'No hay productos activos.' }}
+                                </td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -99,6 +126,7 @@
                 <table class="cf-tabla">
                     <thead>
                         <tr>
+                            <th>Código</th>
                             <th>Producto</th>
                             <th class="num">Sistema</th>
                             <th class="num">Contado</th>
@@ -109,6 +137,7 @@
                     <tbody>
                         @foreach ($resultado as $fila)
                             <tr>
+                                <td class="cf-codigo">{{ $fila['codigo'] }}</td>
                                 <td>{{ $fila['nombre'] }}</td>
                                 <td class="num">{{ $fila['sistema'] }}</td>
                                 <td class="num">{{ $fila['contado'] }}</td>
@@ -117,7 +146,7 @@
                             </tr>
                         @endforeach
                         <tr>
-                            <td colspan="4" style="font-weight:700">{{ $resultadoInicial ? 'Valor del inventario contado' : 'Total de la diferencia' }}</td>
+                            <td colspan="5" style="font-weight:700">{{ $resultadoInicial ? 'Valor del inventario contado' : 'Total de la diferencia' }}</td>
                             <td class="num" style="font-weight:800">{{ $pesos(collect($resultado)->sum('valor')) }}</td>
                         </tr>
                     </tbody>
