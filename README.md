@@ -46,7 +46,7 @@ La migración `2026_10_22_000001` crea un índice único de caja por fecha y suc
 - Los retiros de efectivo (consignaciones, entregas al dueño) se registran en Gastos con la categoría "Retiro / consignación": descuentan del saldo de caja pero no cuentan como gasto.
 - El inventario final se hace en **Conteo físico**: se digita lo contado y el sistema registra sobrantes y faltantes como ajustes trazables. El primer conteo se marca como inventario inicial.
 - No se permiten ventas, ediciones ni anulaciones sobre fechas con caja cerrada.
-- Las ventas y cajas no se borran. Una venta se corrige editándola o se **anula** (devuelve el stock y sale de caja y reportes); los productos se eliminan de forma lógica y se pueden restaurar.
+- Las ventas y cajas no se borran. Una venta se corrige editándola o se **anula** (registra una devolución y sale de caja y reportes de ventas; si la mercancía se descarta, registra además una merma equivalente); los productos se eliminan de forma lógica y se pueden restaurar.
 - La aplicación usa la hora de Cali (`APP_TIMEZONE=America/Bogota`): la caja se cuadra por fecha y con UTC las ventas de la noche caerían en el día siguiente.
 - Roles (RF10): Administrador (todo), Operario (ventas y consulta de inventario), Consultor (solo reportes).
 

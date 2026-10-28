@@ -3,9 +3,9 @@
 > **Bitácora histórica** de la implementación. Fecha inicio: 2026-09-08 | Última fase: 2026-10-22
 > Stack: Laravel 13 + Filament 5 + PHP 8.4 + Pest 4.5 | Tests: 181/181 verde (2026-10-22, PHP 8.4.26) | Pint: verde | Vite: verde
 >
-> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **187 pruebas** (27/10/2026) y cobertura histórica del **92,5 %** (22/10/2026).
-> La marca de implementación de RNF03 o RNF08 en esta bitácora no certifica todos los entornos del requisito original. La verificación de entrega acredita Chrome y Firefox en las condiciones descritas y registra acceso al demo desde Safari en un iPhone personal, según uno de los autores; Edge sigue pendiente. MySQL se comprobó para operación y SQLite se usó solo para pruebas. RNF03 y RNF08 siguen parciales.
-> Estado actual de los RNF parciales: **RNF02 Usabilidad** (no se midió el manejo básico frente al límite de dos horas de capacitación); **RNF03 Compatibilidad** (Edge pendiente; Safari cuenta con acceso al demo comunicado desde un iPhone, no con la batería completa); **RNF08 Portabilidad** (PostgreSQL y SQL Server sin pruebas de operación); **RNF10 Cumplimiento** (sin evaluación formal completa de estándares web). La cobertura crítica de RNF10 se midió localmente: 92,5 % el 22/10/2026.
+> Las secciones 1 a 4 registran cada fase con los nombres y cifras de su momento (por ejemplo, "Operador", 42 productos de demostración, 84 o 103 pruebas). Los valores vigentes están en `CUMPLIMIENTO_ANTEPROYECTO.md`, `TESTING_REPORT.md` y `AGENTS.md`: rol **Operario**, catálogo real de **50 productos**, **204 pruebas y 795 aserciones** (27/10/2026) y cobertura histórica del **92,5 %** (22/10/2026).
+> La marca de implementación de RNF03 o RNF08 en esta bitácora no certifica todos los entornos del requisito original. Chrome, Firefox y Edge superaron sus pruebas documentadas; un autor confirmó acceso al demo desde Safari en su iPhone. MySQL se comprobó para operación y SQLite se usó solo para pruebas. RNF03 y RNF08 siguen parciales.
+> Estado actual de los RNF parciales: **RNF02 Usabilidad** (no se midió el manejo básico frente al límite de dos horas de capacitación); **RNF03 Compatibilidad** (Safari confirmado desde un iPhone, sin la batería completa); **RNF08 Portabilidad** (PostgreSQL y SQL Server sin pruebas de operación); **RNF10 Cumplimiento** (sin evaluación formal completa de estándares web). La cobertura crítica de RNF10 se midió localmente: 92,5 % el 22/10/2026.
 > **Corrección del 27/10/2026:** la edición de gastos guarda en cajas abiertas y rechaza fechas con caja cerrada. La suite completa pasó con 187 pruebas; las cifras anteriores conservan su fecha histórica. Detalles en `TESTING_REPORT.md`.
 
 ---
@@ -209,7 +209,7 @@ Auditoría de los documentos del proyecto contra el código: el documento de cum
 - [x] RF02/RF03: fecha de la transacción y varios productos por registro (`InventarioService::registrarLote`)
 - [x] RF05: `stockCalculado` corregido (contaba movimientos anteriores al último inicial) y visible en Productos
 - [x] RF07: widget de productos críticos con sugerencia de reorden en el dashboard
-- [x] RF08/RF09: 11 reportes exportables a PDF/Excel/CSV; ventas diarias por producto en pantalla
+- [x] RF08/RF09: 11 reportes exportables a PDF/Excel/CSV; en pantalla solo los de uso diario y el resto por descarga
 - [x] Anulación de ventas (devoluciones): repone stock, sale de caja y reportes, queda auditada
 - [x] OE4: indicadores de precisión de inventario, pérdidas, agotados y cuadre de caja
 - [x] RNF04: auditoría de todo cambio de stock + pantalla de auditoría
@@ -318,3 +318,12 @@ php artisan serve # /admin
 - RF y RNF: 12+10 en `RF y RNF.docx` → `CUMPLIMIENTO_ANTEPROYECTO.md`
 ```
 
+
+
+## Actualización documental e interfaz (27/10/2026)
+
+- Anulación con causa y motivo; descarte opcional mediante devolución y merma equivalente en una transacción.
+- Consulta de ventas y movimientos sin edición; exportación CSV de ventas seleccionadas, incluidas las anuladas marcadas.
+- Buscador del conteo físico, reorganización de Reportes y presentación legible del detalle de auditoría.
+- Diccionario de datos, diagramas, tesis, anexos y capturas sincronizados. Los DOCX se exportan a PDF y las copias de entrega se verifican por contenido binario.
+- Verificación local: 204 pruebas, 795 aserciones, Pint y compilación correctos. Cobertura y resultados históricos del piloto conservan su fecha y alcance.

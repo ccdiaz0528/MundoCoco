@@ -1,8 +1,8 @@
 # Estrategia de pruebas - MundoCoco
 
-La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **181 tests (661 assertions)** en 16,37 s con PHP 8.5.10 (44,42 s en PHP 8.4.26, sin caché de código), 100% verde en ambas versiones. No declarar cantidad vigente sin ejecutar `php artisan test`.
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **204 pruebas (795 aserciones)** en 56,85 s, PHP 8.4.26, el 27/10/2026. Pint y `npm run build` también pasaron. La cobertura no se repitió; la medición del 22/10/2026 se conserva como histórica. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
-## Estado Actual 2026-10-22
+## Medición histórica del 2026-10-22
 
 Medido en PHP 8.4.26 y 8.5.10 después de la auditoría técnica (`c18cd43`: caja única por fecha, stock con productos eliminados, exportes sin fórmulas, API paginada y tokens con expiración):
 
@@ -133,7 +133,7 @@ Medido en un entorno aislado (copia del proyecto con su propia base MySQL 8.4.3 
 - **Hallazgo corregido:** `/admin/reportes` tardaba 2,4–3,0 s (hasta 3,4 s) por dibujar todos los movimientos del periodo; ahora muestra los 200 más recientes (`Reportes::MOVIMIENTOS_EN_PANTALLA`), informa el total y la exportación sigue completa (≈0,9–1,0 s).
 - **RNF09 (BD < 100 MB):** 0,89 MB inicial con el catálogo de demostración de 42 productos (1,00 MB con el catálogo real de 50 productos, cifra que usa el Trabajo de Grado); 3,13 MB con 200 productos y 2.812 movimientos.
 - **RNF04 (sesión de 2 h):** con `SESSION_DRIVER=database`, sesión activa a los 119 min de inactividad y cerrada (redirige a login) a los 121 min. Además `RequisitosNoFuncionalesTest` verifica `session.lifetime = 120` y bcrypt.
-- **RNF03:** Chrome 154 sobre MySQL 8.4.3 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox 158 (Puppeteer sobre WebDriver BiDi, SQLite de demostración): las mismas 35 comprobaciones sin desbordamiento ni errores, más un flujo de venta (selectores, rechazo por stock insuficiente, venta válida, listado, reportes PDF/XLSX) con 10 de 10 pasos correctos (2026-10-16). El 26/10/2026 uno de los autores confirmó que el demo de Render abre en Safari desde su iPhone personal; se registra como comprobación de acceso, sin equipararla a la batería de siete pantallas. Edge no se verificó. RNF03 permanece parcialmente cumplido.
+- **RNF03:** Chrome 154 sobre MySQL 8.4.3 en 1024×768, 1366×768, 1920×1080 y 768×1024: 35 comprobaciones sin desbordamiento ni errores. Firefox 158 (SQLite de demostración): las mismas 35 comprobaciones, más un flujo de venta de 10 pasos correctos (16/10/2026). Edge 156.0.4314.50 (MySQL 8.4.3 aislado, 27/10/2026) superó 35 comprobaciones en cinco configuraciones de ventana y nueve pasos funcionales, incluyendo venta, caja y exportación PDF/XLSX; sin errores detectados. El 26/10/2026 un autor confirmó acceso al demo desde Safari en un iPhone; no se ejecutó allí la batería completa. RNF03 permanece parcial por Safari.
 - **RNF08:** MySQL 8.4.3 es el único motor comprobado para operación. SQLite en memoria se utilizó solo en la suite automatizada; PostgreSQL y SQL Server no se probaron. RNF08 permanece parcialmente cumplido frente al requisito original.
 
 Comprobación adicional del 26/10/2026 en la instalación local configurada con MySQL: Chrome 156 y Firefox 158 abrieron `/admin/login` con respuesta HTTP 200, mostraron el campo de contraseña y no produjeron errores JavaScript en esa pantalla. Es una prueba de ingreso, no una repetición del flujo completo de venta ni una verificación de Edge.
@@ -144,3 +144,10 @@ Una prueba aislada de Livewire con SQLite en memoria intentó guardar un gasto c
 
 
 **Corrección posterior (27/10/2026):** se eliminó el error de guardado y se validan ambas fechas frente a cajas cerradas. `GastosPanelTest` comprueba edición válida, recálculo de las dos cajas, rechazo sin cambios parciales, separación de retiros y prohibición de editar gastos de caja cerrada. La suite completa pasó con **187 pruebas y 699 aserciones**, con SQLite en memoria; Pint y la compilación también pasaron. No se comprobó concurrencia en MySQL en esta ejecución. Las métricas de cobertura del 22/10/2026 siguen siendo históricas.
+
+
+## Verificación de los cambios de interfaz y anulación (27/10/2026)
+
+Sobre los cambios locales revisados: Pint correcto, `composer test` con 204 pruebas y 795 aserciones en 56,85 s (PHP 8.4.26, SQLite en memoria), y `npm run build` correcto. La ejecución incluye el detalle de ventas con caja cerrada, CSV de ventas seleccionadas y permisos, anulación con causa y descarte, propuesta de descarte, auditoría legible y consulta de movimientos. Véanse `VentasPanelTest`, `AuditoriaLegibleTest`, `MovimientosPanelTest` y `CumplimientoAnteproyectoTest`.
+
+Las capturas documentales actualizadas provienen de una copia aislada con MySQL y datos ilustrativos. Su propósito es describir la interfaz; no sustituyen la batería RNF03, las pruebas de concurrencia, la cobertura ni la evidencia del piloto. Los estados parciales previamente documentados se conservan.

@@ -72,11 +72,18 @@ Reglas importantes:
 
 ### 3.3 Anular una venta (devolución)
 
-*Solo Administrador.* En la fila de la venta pulsa **Anular**, escribe el motivo y confirma.
+*Solo Administrador.* En la fila de la venta pulsa **Anular**, elige la **causa** (error de registro, devolución del cliente, producto defectuoso, consumo interno u otro) y escribe el detalle. Ambas cosas son obligatorias.
 
 - Las unidades vuelven al inventario (quedan como **Devolución** en Movimientos).
-- La venta deja de sumar en la caja y en los reportes, pero **no se borra**: queda marcada como *Anulada* con su motivo.
+- Si el producto **no puede volver a venderse** (dañado, vencido o consumo interno), activa **"El producto no vuelve al inventario"**: el sistema registra la devolución y una **Merma** por la misma cantidad. Así el stock no se infla con unidades inexistentes y la pérdida aparece en los indicadores. El dinero se devuelve igual.
+- La venta deja de sumar en la caja y en los reportes, pero **no se borra**: queda marcada como *Anulada* con su causa y su motivo.
+- La causa permite filtrar las anulaciones en la lista de ventas para revisar patrones (por ejemplo, anulaciones del mismo día o del mismo usuario).
 - Solo es posible con la caja de esa fecha abierta. Una venta anulada no se puede editar.
+
+### 3.4 Ver el detalle y exportar
+
+- En la fila de la venta pulsa **Ver** para consultar sus productos, cantidades, precios, subtotales, observaciones y, si aplica, la causa y el motivo de la anulación. Es solo lectura y está disponible **siempre**, incluso cuando **Editar** y **Anular** no aparecen (venta anulada o caja de esa fecha cerrada).
+- Con permiso de *exportar reportes* (Administrador) aparecen casillas a la izquierda: marca las ventas que necesites y pulsa **Exportar seleccionadas (CSV)**. El archivo trae una fila por detalle de venta, incluye las anuladas seleccionadas y muestra su estado. Total venta se repite en cada producto: no sume esa columna por fila.
 
 ---
 
@@ -171,12 +178,13 @@ Tipos: **Inventario inicial** (fija el stock base), **Compra**, **Devolución**,
 
 ### 6.5 Conteo físico (cierre de inventario)
 
-*Menú: Catálogo → Conteo físico. Solo Administrador.* Reemplaza la columna de *inventario final* de la planilla.
+*Menú: Catálogo → Conteo físico. Solo Administrador.* Reemplaza la columna de *inventario final* de la planilla. Cada fila muestra el **código**, el nombre del producto y el stock que tiene el sistema.
 
 1. Revisa la **fecha del conteo** y escribe en *Observaciones* quién contó o el turno.
-2. Cuenta cada producto y escribe la cantidad en **Contado**; la **Diferencia** se calcula en el momento (verde si sobra, rojo si falta).
-3. Deja vacío lo que no contaste: esos productos no se modifican.
-4. Pulsa **Registrar conteo**. Cada sobrante queda como *Ajuste positivo* y cada faltante como *Ajuste negativo*, con el motivo «Conteo físico». Al final se muestra la diferencia valorizada a precio de venta.
+2. Usa el **buscador** (nombre o código) para ir directo a un producto, sobre todo en el celular o cuando la lista es larga. El filtro no borra lo que ya digitaste: al limpiarlo, los conteos siguen ahí.
+3. Cuenta cada producto y escribe la cantidad en **Contado**; la **Diferencia** se calcula en el momento (verde si sobra, rojo si falta).
+4. Deja vacío lo que no contaste: esos productos no se modifican.
+5. Pulsa **Registrar conteo**. Cada sobrante queda como *Ajuste positivo* y cada faltante como *Ajuste negativo*, con el motivo «Conteo físico». Al final se muestra la diferencia valorizada a precio de venta.
 
 > La **primera vez**, deja marcada la casilla **Es el inventario inicial de la tienda**: el conteo fija el stock (no calcula diferencias). Viene marcada mientras no haya movimientos.
 
@@ -216,18 +224,21 @@ Elige el periodo (**Desde / Hasta**) y pulsa **Aplicar periodo**. Cada sección 
 |---|---|
 | Valorización de inventario | Valor del inventario a costo y a precio de venta, ganancia potencial |
 | Indicadores de gestión | Precisión del inventario, pérdidas por mermas y ajustes, productos agotados, cajas con diferencia, ventas anuladas |
-| Inventario por categoría | Productos, stock y valorización por línea |
 | Productos con stock bajo | Con sugerencia de reorden |
 | Comparativo | Periodo elegido frente al anterior de igual duración |
-| Movimientos de inventario | Historial del periodo |
-| Ventas diarias por producto | Unidades e ingreso de cada producto por día |
-| Ventas por categoría / Más vendidos / Ingresos por día | Análisis de ventas del periodo |
+| Ingresos por día | Evolución diaria de las ventas del periodo |
+| Productos más vendidos | Top 5 del periodo |
 | Flujo de efectivo | Del día *Hasta*: base, ventas por método, gastos, retiros o consignaciones, anuladas, saldo y, si la caja se cerró, lo contado y la diferencia |
+| Movimientos de inventario | Historial del periodo (máximo 200 en pantalla; la descarga los incluye todos) |
 
-Las ventas anuladas no se cuentan en ningún reporte de ventas.
+Al final, el bloque **Otros reportes** descarga en PDF, Excel o CSV los informes de detalle que no se dibujan en pantalla: inventario actual por categoría, ventas por categoría y ventas diarias por producto.
+
+Los reportes agregados de ventas excluyen las anuladas. El CSV de ventas seleccionadas sí las incluye cuando se marcan, identificadas por su estado.
 
 ### 8.3 Auditoría
 
 *Menú: Informes → Auditoría. Solo Administrador.*
 
 Registro de solo lectura de las operaciones críticas: ventas creadas, editadas y anuladas, precios distintos del base, cambios de inventario, cierres de caja y autorizaciones de datos. Filtra por acción, usuario o fecha.
+
+Cada fila se lee en lenguaje sencillo: la acción (por ejemplo *Venta anulada*), el registro afectado (el producto o la venta) y un resumen de lo que pasó. Al hacer clic en la fila, o en **Ver detalle**, se abre una ventana con todos los datos del cambio (campo, valor anterior y valor nuevo), sin cortes aunque el registro sea largo: el cierre de caja muestra todas sus cifras y una venta editada solo lo que realmente cambió.

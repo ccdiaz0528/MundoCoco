@@ -31,6 +31,9 @@ Filament (pantallas)  ──►  Servicios (reglas de negocio)  ──►  Model
 - **API v1:** `app/Http/Controllers/Api/V1/` (`ProductoController`, `VentaController`, `ReporteController`); solo consultan modelos y servicios, sin lógica de negocio propia.
 - **Dinero:** siempre en centavos enteros (`App\Support\Dinero`); se guarda como `decimal(10,2)`.
 - **Stock:** los servicios lo modifican con el *query builder* y registran su propio `MovimientoInventario`; el `ProductoObserver` solo traza ajustes manuales hechos desde el formulario de producto y, además, audita los cambios del catálogo (nombre, precios, categoría, stock mínimo, estado) como `producto_actualizado`. `VentaService::moverStock` repone el stock con `Producto::withTrashed()`, de modo que anular una venta de un producto eliminado de forma lógica también cuadra.
+- **Anulación:** `VentaService::anular` acepta una causa configurada en `mundococo.motivos_anulacion` y un indicador opcional de descarte. El motivo textual sigue siendo obligatorio; la categoría es obligatoria en el panel y opcional para llamadas existentes al servicio. Si se descarta, se registra una devolución y una merma por la misma cantidad dentro de la transacción.
+- **Ventas seleccionadas:** `ReporteExportService::ventasSeleccionadasCsv` exporta una fila por detalle de venta, incluidas las anuladas seleccionadas. La acción del panel exige el permiso de exportar reportes y el archivo aplica la protección contra fórmulas. El total de la venta se repite en cada detalle; no debe sumarse como si cada fila fuera una venta independiente.
+- **Migración de anulación:** `2026_10_28_000001_add_categoria_anulacion_to_ventas` incorpora `ventas.categoria_anulacion` como `varchar(50)` nullable, sin índice adicional. Las anulaciones anteriores conservan `null`; ejecutar las migraciones pendientes antes de usar esta versión.
 - **Concurrencia:** `DB::transaction(…, 3)` + `lockForUpdate`, bloqueando productos en orden de `id`.
 - **Permisos:** las policies consultan *permisos*, no nombres de rol. `database/seeders/RoleSeeder.php` es la única fuente de verdad.
 - **Sucursales (RNF07):** ventas, cajas, gastos y movimientos tienen `sucursal_id` (trait `PerteneceASucursal`); por defecto, la sucursal principal.
@@ -79,7 +82,7 @@ Para que el sistema sea accesible desde cualquier lugar sin usar el equipo de la
 ### Actualizar una instalación existente
 
 ```powershell
-php artisan migrate                            # incluye caja.total_retiros (2026_10_07_000001) y el índice único de caja (2026_10_22_000001)
+php artisan migrate                            # incluye total_retiros, caja única y ventas.categoria_anulacion (2026_10_28_000001)
 php artisan db:seed --class=MetodoPagoSeeder   # agrega Nequi sin duplicar
 php artisan db:seed --class=RoleSeeder         # permisos estrictos de RF10 (renombra Operador → Operario)
 ```
@@ -88,7 +91,7 @@ La migración `2026_10_22_000001` crea el índice único `caja_fecha_sucursal_un
 
 ## 4. Parámetros configurables (sin tocar código)
 
-Definidos en `config/mundococo.php` y ajustables desde `.env`:
+Los parámetros de la tabla se definen en `config/mundococo.php` y se ajustan desde `.env`. El catálogo `motivos_anulacion` se modifica directamente en la configuración: sus claves se guardan en la base de datos y deben conservarse estables; las etiquetas pueden cambiarse. Al modificar la configuración, regenere su caché con `php artisan config:cache`.
 
 | Variable | Uso | Valor por defecto |
 |---|---|---|
@@ -146,10 +149,18 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación vigente es local (2026-10-22, PHP 8.4.26: 181 pruebas, 661 aserciones, cobertura 92,5 %).
+CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación es local. El 27/10/2026 pasaron 204 pruebas y 795 aserciones en PHP 8.4.26, además de Pint y la compilación. La cobertura de 92,5 % corresponde al 22/10/2026 y no se volvió a medir sobre estos cambios.
 
 ## 9. Diagnóstico
 
 - Registro de la aplicación: `storage/logs/laravel.log`.
 - Operaciones críticas: panel → *Informes → Auditoría* (solo Administrador).
 - Consistencia del inventario: columna *Stock calculado* en Productos y el indicador *Precisión de inventario* en Reportes.
+
+
+## 10. Consultas de la interfaz
+
+- `VentasTable` permite consultar el detalle con la política `view`, incluso con venta anulada o caja cerrada. La causa clasifica la anulación; producto defectuoso o vencido y consumo interno o muestra proponen descarte, que el usuario puede revisar antes de confirmar.
+- `MovimientosTable` ofrece detalle de solo lectura. `ConteoFisico` busca productos activos por nombre o código y conserva los conteos digitados al cambiar de filtro; registrar procesa las cantidades ingresadas, no solo las filas visibles.
+- `Reportes` muestra ocho resúmenes y mantiene once consultas exportables. Inventario por categoría, ventas por categoría y ventas diarias por producto están en Otros reportes, sin tabla en pantalla. El límite de 200 movimientos solo afecta la visualización.
+- `AuditoriaLegible` presenta acciones, registros y cambios en español. `AuditLogsTable` abre el detalle completo en `filament/audit-detalle`; conserva los datos almacenados y el acceso de solo lectura.
