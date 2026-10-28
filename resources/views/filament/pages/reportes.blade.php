@@ -46,7 +46,7 @@
         @enderror
     </x-filament::section>
 
-    <div style="margin-top:16px">
+    <div class="rpt-grid">
         <x-filament::section heading="Valorización de inventario" description="Cantidad × precio de los {{ $val['count'] ?? 0 }} productos activos.">
             @include('filament.pages.partials.descargas', ['tipo' => 'valorizacion'] + $rango)
             <div class="rpt-kpis" style="margin-top:0">
@@ -56,9 +56,7 @@
                 <div><span class="rpt-label">Productos en stock bajo</span><p class="rpt-kpi">{{ $datos['productosStockBajo']->count() }}</p></div>
             </div>
         </x-filament::section>
-    </div>
 
-    <div style="margin-top:16px">
         <x-filament::section heading="Indicadores de gestión" description="Precisión de inventario, pérdidas y exactitud del cuadre de caja en el periodo.">
             @include('filament.pages.partials.descargas', ['tipo' => 'indicadores'] + $rango)
             <div class="rpt-kpis" style="margin-top:0">
@@ -76,40 +74,49 @@
         </x-filament::section>
     </div>
 
-    <div style="margin-top:16px">
-        <x-filament::section heading="Inventario actual por categoría" description="Stock, productos en mínimo y valorización por línea.">
-            @include('filament.pages.partials.descargas', ['tipo' => 'inventario'] + $rango)
-            <div class="rpt-scroll">
-                <table class="rpt-tabla">
-                    <thead>
-                        <tr><th>Categoría</th><th class="num">Productos</th><th class="num">Stock total</th><th class="num">En mínimo</th><th class="num">Val. costo</th><th class="num">Val. venta</th></tr>
-                    </thead>
-                    <tbody>
-                        @forelse($datos['inventarioPorCategoria'] as $row)
-                            <tr>
-                                <td class="fuerte">{{ $row['categoria'] }}</td>
-                                <td class="num">{{ $row['total_productos'] }}</td>
-                                <td class="num">{{ $row['stock_total'] }}</td>
-                                <td class="num fuerte">{{ $row['productos_bajo'] }}</td>
-                                <td class="num">{{ $pesos($row['valorizacion_costo']) }}</td>
-                                <td class="num fuerte">{{ $pesos($row['valorizacion_venta']) }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="6" style="text-align:center;opacity:.6">Sin categorías con productos.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+    <div class="rpt-grid">
+        <x-filament::section heading="Comparativo con periodo anterior" description="Periodo {{ $datos['desde'] }} al {{ $datos['hasta'] }} vs anterior de igual duración.">
+            @include('filament.pages.partials.descargas', ['tipo' => 'comparativo'] + $rango)
+            <table class="rpt-tabla">
+                <tbody>
+                    <tr><td style="opacity:.7">Anterior ({{ $datos['comparativo']['periodo1']['transacciones'] }} ventas)</td><td class="num fuerte">{{ $pesos($datos['comparativo']['periodo1']['total']) }}</td></tr>
+                    <tr><td style="opacity:.7">Seleccionado ({{ $datos['comparativo']['periodo2']['transacciones'] }} ventas)</td><td class="num fuerte">{{ $pesos($datos['comparativo']['periodo2']['total']) }}</td></tr>
+                    <tr><td style="opacity:.7">Diferencia</td><td class="num fuerte">{{ $pesos($datos['comparativo']['diferencia']) }}</td></tr>
+                    <tr><td class="fuerte">Variación</td><td class="num" style="font-weight:800">{{ number_format((float) $datos['comparativo']['variacion_porcentual'], 1, ',', '.') }} %</td></tr>
+                </tbody>
+            </table>
+        </x-filament::section>
+
+        <x-filament::section heading="Ingresos por día" description="Evolución diaria en el periodo.">
+            @include('filament.pages.partials.descargas', ['tipo' => 'ventas'] + $rango)
+            @if($datos['ingresosPorDia']->isEmpty())
+                <p class="rpt-vacio">Sin ventas en el periodo.</p>
+            @else
+                <div class="rpt-scroll alto">
+                    <table class="rpt-tabla">
+                        <thead><tr><th>Fecha</th><th class="num">Total</th><th class="num">Ventas</th></tr></thead>
+                        <tbody>
+                            @foreach($datos['ingresosPorDia'] as $row)
+                                <tr>
+                                    <td>{{ $row->periodo }}</td>
+                                    <td class="num fuerte">{{ $pesos($row->total) }}</td>
+                                    <td class="num">{{ $row->transacciones }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </x-filament::section>
     </div>
 
-    <div style="margin-top:16px">
+    <div class="rpt-grid">
         <x-filament::section heading="Productos con stock bajo" description="Alerta en tiempo real con sugerencia de reorden.">
             @include('filament.pages.partials.descargas', ['tipo' => 'stock_bajo'] + $rango)
             @if($datos['productosStockBajo']->isEmpty())
                 <p class="rpt-vacio">Sin alertas: todo el inventario está por encima del mínimo.</p>
             @else
-                <div class="rpt-scroll">
+                <div class="rpt-scroll alto">
                     <table class="rpt-tabla">
                         <thead>
                             <tr><th>Producto</th><th>Categoría</th><th class="num">Stock</th><th class="num">Mínimo</th><th class="num">Sugerencia</th></tr>
@@ -129,17 +136,46 @@
                 </div>
             @endif
         </x-filament::section>
+
+        <x-filament::section heading="Productos más vendidos" description="Top 5 del periodo seleccionado.">
+            @include('filament.pages.partials.descargas', ['tipo' => 'mas_vendidos'] + $rango)
+            @if($datos['productosMasVendidos']->isEmpty())
+                <p class="rpt-vacio">Sin ventas en el periodo seleccionado.</p>
+            @else
+                <table class="rpt-tabla">
+                    <thead><tr><th>Producto</th><th class="num">Unidades</th><th class="num">Ingreso</th></tr></thead>
+                    <tbody>
+                        @foreach($datos['productosMasVendidos'] as $d)
+                            <tr>
+                                <td class="fuerte">{{ $d->producto->nombre ?? '—' }}</td>
+                                <td class="num">{{ $d->total_cantidad }}</td>
+                                <td class="num fuerte">{{ $pesos($d->total_ingreso) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </x-filament::section>
     </div>
 
     <div class="rpt-grid">
-        <x-filament::section heading="Comparativo con periodo anterior" description="Periodo {{ $datos['desde'] }} al {{ $datos['hasta'] }} vs anterior de igual duración.">
-            @include('filament.pages.partials.descargas', ['tipo' => 'comparativo'] + $rango)
+        <x-filament::section heading="Flujo de efectivo del {{ $flujo['fecha'] }}" description="Caja {{ $flujo['caja'] }}. Saldo = Base + Ventas − Gastos − Retiros.">
+            @include('filament.pages.partials.descargas', ['tipo' => 'flujo_caja'] + $rango)
             <table class="rpt-tabla">
                 <tbody>
-                    <tr><td style="opacity:.7">Anterior ({{ $datos['comparativo']['periodo1']['transacciones'] }} ventas)</td><td class="num fuerte">{{ $pesos($datos['comparativo']['periodo1']['total']) }}</td></tr>
-                    <tr><td style="opacity:.7">Seleccionado ({{ $datos['comparativo']['periodo2']['transacciones'] }} ventas)</td><td class="num fuerte">{{ $pesos($datos['comparativo']['periodo2']['total']) }}</td></tr>
-                    <tr><td style="opacity:.7">Diferencia</td><td class="num fuerte">{{ $pesos($datos['comparativo']['diferencia']) }}</td></tr>
-                    <tr><td class="fuerte">Variación</td><td class="num" style="font-weight:800">{{ number_format((float) $datos['comparativo']['variacion_porcentual'], 1, ',', '.') }} %</td></tr>
+                    <tr><td style="opacity:.7">Base de caja</td><td class="num fuerte">{{ $pesos($flujo['base']) }}</td></tr>
+                    <tr><td style="opacity:.7">Efectivo</td><td class="num fuerte">{{ $pesos($flujo['ventas']['efectivo']) }}</td></tr>
+                    <tr><td style="opacity:.7">Nequi</td><td class="num fuerte">{{ $pesos($flujo['ventas']['nequi']) }}</td></tr>
+                    <tr><td style="opacity:.7">Transferencias</td><td class="num fuerte">{{ $pesos($flujo['ventas']['transferencias']) }}</td></tr>
+                    <tr><td style="opacity:.7">Tarjetas</td><td class="num fuerte">{{ $pesos($flujo['ventas']['tarjetas']) }}</td></tr>
+                    <tr><td style="opacity:.7">Total ventas ({{ $flujo['transacciones'] }})</td><td class="num" style="font-weight:800">{{ $pesos($flujo['ventas']['total']) }}</td></tr>
+                    <tr><td style="opacity:.7">Gastos y compras ({{ $flujo['gastos_count'] }})</td><td class="num fuerte">{{ $pesos($flujo['gastos_total']) }}</td></tr>
+                    <tr><td style="opacity:.7">Retiros / consignaciones ({{ $flujo['retiros_count'] }})</td><td class="num fuerte">{{ $pesos($flujo['retiros_total']) }}</td></tr>
+                    <tr><td style="opacity:.7">Ventas anuladas ({{ $flujo['anuladas_count'] }})</td><td class="num">{{ $pesos($flujo['anuladas_total']) }}</td></tr>
+                    <tr><td class="fuerte">Saldo del día</td><td class="num" style="font-weight:800">{{ $pesos($flujo['saldo_teorico']) }}</td></tr>
+                    @if($flujo['diferencia'] !== null)
+                        <tr><td style="opacity:.7">Contado al cierre / diferencia</td><td class="num fuerte">{{ $pesos($flujo['saldo_real']) }} / {{ $pesos($flujo['diferencia']) }}</td></tr>
+                    @endif
                 </tbody>
             </table>
         </x-filament::section>
@@ -172,115 +208,33 @@
         </x-filament::section>
     </div>
 
-    <div style="margin-top:16px">
-        <x-filament::section heading="Ventas diarias por producto" description="{{ $datos['desde'] }} al {{ $datos['hasta'] }}">
-            @include('filament.pages.partials.descargas', ['tipo' => 'ventas_producto'] + $rango)
-            @if($datos['ventasDiariasPorProducto']->isEmpty())
-                <p class="rpt-vacio">Sin ventas en el periodo seleccionado.</p>
-            @else
-                <div class="rpt-scroll alto">
+    @can('exportar reportes')
+        <div style="margin-top:16px">
+            <x-filament::section heading="Otros reportes" description="Se descargan completos para el periodo elegido; no se dibujan en pantalla para mantenerla liviana.">
+                <div class="rpt-scroll">
                     <table class="rpt-tabla">
                         <thead>
-                            <tr><th>Fecha</th><th>Producto</th><th class="num">Unidades</th><th class="num">Ingreso</th></tr>
+                            <tr><th>Reporte</th><th class="num">PDF</th><th class="num">Excel</th><th class="num">CSV</th></tr>
                         </thead>
                         <tbody>
-                            @foreach($datos['ventasDiariasPorProducto'] as $row)
+                            @foreach([
+                                'inventario' => 'Inventario actual por categoría',
+                                'ventas_categoria' => 'Ventas por categoría',
+                                'ventas_producto' => 'Ventas diarias por producto',
+                            ] as $tipo => $titulo)
                                 <tr>
-                                    <td>{{ $row->fecha }}</td>
-                                    <td class="fuerte">{{ $row->producto }}</td>
-                                    <td class="num">{{ (int) $row->cantidad }}</td>
-                                    <td class="num fuerte">{{ $pesos($row->ingreso) }}</td>
+                                    <td class="fuerte">{{ $titulo }}</td>
+                                    @foreach(['pdf' => 'PDF', 'xlsx' => 'Excel', 'csv' => 'CSV'] as $formato => $etiqueta)
+                                        <td class="num">
+                                            <a href="{{ route('reportes.export', ['tipo' => $tipo, 'formato' => $formato] + $rango) }}" style="text-decoration:underline">{{ $etiqueta }}</a>
+                                        </td>
+                                    @endforeach
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-            @endif
-        </x-filament::section>
-    </div>
-
-    <div class="rpt-grid">
-        <x-filament::section heading="Ventas por categoría" description="{{ $datos['desde'] }} al {{ $datos['hasta'] }}">
-            @include('filament.pages.partials.descargas', ['tipo' => 'ventas_categoria'] + $rango)
-            @if($datos['ventasPorCategoria']->isEmpty())
-                <p class="rpt-vacio">Sin ventas en el periodo seleccionado.</p>
-            @else
-                <table class="rpt-tabla">
-                    <thead><tr><th>Categoría</th><th class="num">Unidades</th><th class="num">Ingreso</th></tr></thead>
-                    <tbody>
-                        @foreach($datos['ventasPorCategoria'] as $row)
-                            <tr>
-                                <td class="fuerte">{{ $row['categoria'] }}</td>
-                                <td class="num">{{ $row['cantidad_vendida'] }}</td>
-                                <td class="num fuerte">{{ $pesos($row['ingreso_total']) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @endif
-        </x-filament::section>
-
-        <x-filament::section heading="Productos más vendidos" description="Top 5 del periodo seleccionado.">
-            @include('filament.pages.partials.descargas', ['tipo' => 'mas_vendidos'] + $rango)
-            @if($datos['productosMasVendidos']->isEmpty())
-                <p class="rpt-vacio">Sin ventas en el periodo seleccionado.</p>
-            @else
-                <table class="rpt-tabla">
-                    <thead><tr><th>Producto</th><th class="num">Unidades</th><th class="num">Ingreso</th></tr></thead>
-                    <tbody>
-                        @foreach($datos['productosMasVendidos'] as $d)
-                            <tr>
-                                <td class="fuerte">{{ $d->producto->nombre ?? '—' }}</td>
-                                <td class="num">{{ $d->total_cantidad }}</td>
-                                <td class="num fuerte">{{ $pesos($d->total_ingreso) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @endif
-        </x-filament::section>
-    </div>
-
-    <div class="rpt-grid">
-        <x-filament::section heading="Ingresos por día" description="Evolución diaria en el periodo.">
-            @include('filament.pages.partials.descargas', ['tipo' => 'ventas'] + $rango)
-            @if($datos['ingresosPorDia']->isEmpty())
-                <p class="rpt-vacio">Sin ventas en el periodo.</p>
-            @else
-                <table class="rpt-tabla">
-                    <thead><tr><th>Fecha</th><th class="num">Total</th><th class="num">Ventas</th></tr></thead>
-                    <tbody>
-                        @foreach($datos['ingresosPorDia'] as $row)
-                            <tr>
-                                <td>{{ $row->periodo }}</td>
-                                <td class="num fuerte">{{ $pesos($row->total) }}</td>
-                                <td class="num">{{ $row->transacciones }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @endif
-        </x-filament::section>
-
-        <x-filament::section heading="Flujo de efectivo del {{ $flujo['fecha'] }}" description="Caja {{ $flujo['caja'] }}. Saldo = Base + Ventas − Gastos − Retiros.">
-            @include('filament.pages.partials.descargas', ['tipo' => 'flujo_caja'] + $rango)
-            <table class="rpt-tabla">
-                <tbody>
-                    <tr><td style="opacity:.7">Base de caja</td><td class="num fuerte">{{ $pesos($flujo['base']) }}</td></tr>
-                    <tr><td style="opacity:.7">Efectivo</td><td class="num fuerte">{{ $pesos($flujo['ventas']['efectivo']) }}</td></tr>
-                    <tr><td style="opacity:.7">Nequi</td><td class="num fuerte">{{ $pesos($flujo['ventas']['nequi']) }}</td></tr>
-                    <tr><td style="opacity:.7">Transferencias</td><td class="num fuerte">{{ $pesos($flujo['ventas']['transferencias']) }}</td></tr>
-                    <tr><td style="opacity:.7">Tarjetas</td><td class="num fuerte">{{ $pesos($flujo['ventas']['tarjetas']) }}</td></tr>
-                    <tr><td style="opacity:.7">Total ventas ({{ $flujo['transacciones'] }})</td><td class="num" style="font-weight:800">{{ $pesos($flujo['ventas']['total']) }}</td></tr>
-                    <tr><td style="opacity:.7">Gastos y compras ({{ $flujo['gastos_count'] }})</td><td class="num fuerte">{{ $pesos($flujo['gastos_total']) }}</td></tr>
-                    <tr><td style="opacity:.7">Retiros / consignaciones ({{ $flujo['retiros_count'] }})</td><td class="num fuerte">{{ $pesos($flujo['retiros_total']) }}</td></tr>
-                    <tr><td style="opacity:.7">Ventas anuladas ({{ $flujo['anuladas_count'] }})</td><td class="num">{{ $pesos($flujo['anuladas_total']) }}</td></tr>
-                    <tr><td class="fuerte">Saldo del día</td><td class="num" style="font-weight:800">{{ $pesos($flujo['saldo_teorico']) }}</td></tr>
-                    @if($flujo['diferencia'] !== null)
-                        <tr><td style="opacity:.7">Contado al cierre / diferencia</td><td class="num fuerte">{{ $pesos($flujo['saldo_real']) }} / {{ $pesos($flujo['diferencia']) }}</td></tr>
-                    @endif
-                </tbody>
-            </table>
-        </x-filament::section>
-    </div>
+            </x-filament::section>
+        </div>
+    @endcan
 </x-filament-panels::page>

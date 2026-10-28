@@ -57,11 +57,8 @@ class Reportes extends Page
         $movimientos = $svc->movimientosPorPeriodo($desde, $hasta, limite: self::MOVIMIENTOS_EN_PANTALLA);
 
         return [
-            'inventarioPorCategoria' => $svc->inventarioPorCategoria(),
             'productosStockBajo' => $svc->productosStockBajo(),
             'valorizacion' => $svc->valorizacionInventario(),
-            'ventasPorCategoria' => $svc->ventasPorCategoria($desde, $hasta),
-            'ventasDiariasPorProducto' => $svc->ventasDiariasPorProductoRango($desde, $hasta),
             'ingresosPorDia' => $svc->ingresosPorPeriodo($desde, $hasta, 'dia'),
             'productosMasVendidos' => $svc->productosMasVendidos(5, Carbon::parse($desde)->startOfDay(), Carbon::parse($hasta)->endOfDay()),
             'flujo' => $svc->flujoCajaDiario($hasta),
