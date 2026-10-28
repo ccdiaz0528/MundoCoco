@@ -23,6 +23,7 @@ class Venta extends Model
         'total',
         'observaciones',
         'fecha_venta',
+        'categoria_anulacion',
     ];
 
     protected $casts = [

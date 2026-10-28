@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\Ventas\Pages\CreateVenta;
 use App\Filament\Resources\Ventas\Pages\EditVenta;
+use App\Filament\Resources\Ventas\Pages\ListVentas;
 use App\Models\AuditLog;
 use App\Models\Caja;
 use App\Models\MetodoPago;
@@ -9,10 +10,12 @@ use App\Models\MovimientoInventario;
 use App\Models\Producto;
 use App\Models\User;
 use App\Models\Venta;
+use App\Services\ReporteExportService;
 use App\Services\VentaService;
 use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Illuminate\Support\Collection;
 use Livewire\Livewire;
 
 /*
@@ -183,5 +186,107 @@ describe('Ventas desde el panel Filament', function () {
 
         expect((string) $caja->fresh()->total_ventas)->toBe('15000.00')
             ->and((string) $caja->fresh()->total_efectivo)->toBe('15000.00');
+    });
+
+    /*
+     * El detalle de la venta no depende de la edición: con la caja del día
+     * cerrada (o la venta anulada) "Editar" se oculta, pero "Ver" debe seguir
+     * mostrando las líneas en modo lectura.
+     */
+    it('mantiene el detalle en solo lectura cuando la caja del día está cerrada', function () {
+        $venta = app(VentaService::class)->crear(
+            ['metodo_pago_id' => $this->efectivo->id],
+            [['producto_id' => $this->producto->id, 'cantidad' => 2]],
+        );
+        Caja::factory()->create(['fecha' => today(), 'estado' => 'cerrada']);
+
+        Livewire::test(ListVentas::class)
+            ->assertTableActionVisible('view', $venta)
+            ->assertTableActionHidden('edit', $venta)
+            ->mountTableAction('view', $venta)
+            ->assertMountedActionModalSee($this->producto->nombre)
+            ->assertMountedActionModalSee('Vigente');
+    });
+
+    it('exporta a CSV solo las ventas seleccionadas, una fila por línea', function () {
+        $otro = Producto::factory()->create(['nombre' => 'Coco Rayado', 'precio_venta' => '2000.00', 'stock_actual' => 5]);
+        $venta = app(VentaService::class)->crear(
+            ['metodo_pago_id' => $this->efectivo->id, 'observaciones' => 'Pedido mostrador'],
+            [['producto_id' => $this->producto->id, 'cantidad' => 2]],
+        );
+        app(VentaService::class)->crear(
+            ['metodo_pago_id' => $this->efectivo->id],
+            [['producto_id' => $otro->id, 'cantidad' => 1]],
+        );
+
+        $respuesta = app(ReporteExportService::class)->ventasSeleccionadasCsv(new Collection([$venta]));
+
+        ob_start();
+        $respuesta->sendContent();
+        $csv = (string) ob_get_clean();
+
+        expect($respuesta->headers->get('content-disposition'))
+            ->toContain('ventas_seleccionadas_')
+            ->and($csv)->toContain($this->producto->nombre)
+            ->toContain('Pedido mostrador')
+            ->toContain('Vigente')
+            ->not->toContain('Coco Rayado');
+    });
+
+    it('solo ofrece la exportación masiva a quien puede exportar reportes', function () {
+        Livewire::test(ListVentas::class)
+            ->assertTableBulkActionHidden('exportar');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $this->actingAs($admin);
+
+        Livewire::test(ListVentas::class)
+            ->assertTableBulkActionVisible('exportar');
+    });
+
+    it('anula desde el panel con causa y descarta el producto dañado', function () {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $this->actingAs($admin);
+
+        $venta = app(VentaService::class)->crear(
+            ['metodo_pago_id' => $this->efectivo->id],
+            [['producto_id' => $this->producto->id, 'cantidad' => 2]],
+        );
+
+        Livewire::test(ListVentas::class)
+            ->callTableAction('anular', $venta, [
+                'categoria_anulacion' => 'producto_defectuoso',
+                'motivo_anulacion' => 'Llegó dañado y se desecha',
+                'descartar' => true,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        expect($venta->fresh()->anulada())->toBeTrue()
+            ->and($venta->fresh()->categoria_anulacion)->toBe('producto_defectuoso')
+            // 10 - 2 vendidas + 2 devueltas - 2 desechadas = 8 vendibles.
+            ->and($this->producto->fresh()->stock_actual)->toBe(8)
+            ->and(MovimientoInventario::where('tipo', MovimientoInventario::TIPO_MERMA)->count())->toBe(1);
+    });
+
+    it('propone descartar el producto al elegir una causa que no vuelve a venderse', function () {
+        $admin = User::factory()->create();
+        $admin->assignRole('Admin');
+        $this->actingAs($admin);
+
+        $venta = app(VentaService::class)->crear(
+            ['metodo_pago_id' => $this->efectivo->id],
+            [['producto_id' => $this->producto->id, 'cantidad' => 1]],
+        );
+
+        Livewire::test(ListVentas::class)
+            ->mountTableAction('anular', $venta)
+            ->assertSet('mountedActions.0.data.descartar', false)
+            ->set('mountedActions.0.data.categoria_anulacion', 'producto_defectuoso')
+            ->assertSet('mountedActions.0.data.descartar', true)
+            // Una devolución normal sí vuelve al inventario.
+            ->set('mountedActions.0.data.categoria_anulacion', 'devolucion_cliente')
+            ->assertSet('mountedActions.0.data.descartar', false);
     });
 });

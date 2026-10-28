@@ -48,4 +48,24 @@ return [
 
     'contacto_datos' => env('CONTACTO_DATOS', 'datos@mundococo.com'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Causas de anulación de ventas (RF12 / RNF04)
+    |--------------------------------------------------------------------------
+    | Catálogo cerrado para clasificar las anulaciones. El texto libre
+    | (motivo_anulacion) sigue siendo obligatorio como detalle, pero la causa
+    | es lo que permite analizar anulaciones por motivo y usuario (RNF06:
+    | ajustable sin tocar código). Las claves son estables; las etiquetas se
+    | pueden reescribir sin migrar datos.
+    |
+    */
+
+    'motivos_anulacion' => [
+        'error_registro' => 'Error de registro (digitación, venta duplicada)',
+        'devolucion_cliente' => 'Devolución total del cliente',
+        'producto_defectuoso' => 'Producto defectuoso o vencido',
+        'consumo_interno' => 'Consumo interno o muestra',
+        'otro' => 'Otro',
+    ],
+
 ];

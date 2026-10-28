@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Venta;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -52,6 +53,57 @@ class ReporteExportService
     private function csv(string $tipo, string $desde, string $hasta): StreamedResponse
     {
         [$encabezados, $filas, $archivo] = $this->datos($tipo, $desde, $hasta);
+
+        return response()->stream(function () use ($encabezados, $filas): void {
+            $salida = fopen('php://output', 'w');
+            fwrite($salida, "\xEF\xBB\xBF"); // BOM: Excel abre tildes correctamente
+            fputcsv($salida, $encabezados);
+            foreach ($this->filasSeguras($filas) as $fila) {
+                fputcsv($salida, $fila);
+            }
+            fclose($salida);
+        }, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$archivo}.csv\"",
+        ]);
+    }
+
+    /**
+     * RF08: exporta en CSV las ventas marcadas en el panel, una fila por línea
+     * de venta (incluye anuladas: el archivo refleja exactamente lo seleccionado).
+     *
+     * @param  iterable<int, Venta>  $ventas
+     */
+    public function ventasSeleccionadasCsv(iterable $ventas): StreamedResponse
+    {
+        $encabezados = [
+            '# Venta', 'Fecha', 'Método de pago', 'Estado', 'Código', 'Producto',
+            'Cantidad', 'Precio unitario', 'Subtotal', 'Total venta', 'Observaciones',
+        ];
+
+        $filas = [];
+
+        foreach ($ventas as $venta) {
+            $venta->loadMissing(['metodoPago', 'detalles.producto']);
+
+            foreach ($venta->detalles as $detalle) {
+                $filas[] = [
+                    $venta->id,
+                    $venta->fecha_venta?->format('Y-m-d H:i'),
+                    $venta->metodoPago?->nombre ?? '',
+                    $venta->anulada() ? 'Anulada' : 'Vigente',
+                    $detalle->producto?->codigo ?? '',
+                    $detalle->producto?->nombre ?? 'Producto eliminado',
+                    $detalle->cantidad,
+                    number_format((float) $detalle->precio_unitario, 2, '.', ''),
+                    number_format((float) $detalle->subtotal, 2, '.', ''),
+                    number_format((float) $venta->total, 2, '.', ''),
+                    $venta->observaciones ?? '',
+                ];
+            }
+        }
+
+        $archivo = 'ventas_seleccionadas_'.Carbon::now()->format('Ymd_His');
 
         return response()->stream(function () use ($encabezados, $filas): void {
             $salida = fopen('php://output', 'w');

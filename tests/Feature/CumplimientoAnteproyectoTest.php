@@ -242,6 +242,48 @@ describe('Anulación de ventas (devoluciones del anteproyecto)', function () {
             ->and(fn () => app(VentaService::class)->anular($this->venta, 'Otra vez'))
             ->toThrow(ValidationException::class);
     });
+
+    it('clasifica la anulación por causa y rechaza una causa fuera del catálogo', function () {
+        app(VentaService::class)->anular($this->venta, 'Cliente devolvió el pedido', 'devolucion_cliente');
+
+        $anulada = $this->venta->fresh();
+        expect($anulada->categoria_anulacion)->toBe('devolucion_cliente')
+            ->and(AuditLog::where('accion', 'venta_anulada')->sole()->cambios['categoria'])
+            ->toBe('devolucion_cliente');
+
+        // Una causa inventada no anula nada: ni marca la venta ni repone stock.
+        $otra = app(VentaService::class)->crear(['metodo_pago_id' => $this->metodo->id], [
+            ['producto_id' => $this->producto->id, 'cantidad' => 1],
+        ]);
+
+        expect(fn () => app(VentaService::class)->anular($otra, 'Error', 'causa_inventada'))
+            ->toThrow(ValidationException::class)
+            ->and($otra->fresh()->anulada())->toBeFalse()
+            ->and($this->producto->fresh()->stock_actual)->toBe(9);
+    });
+
+    it('si el producto devuelto se descarta, no infla el stock y deja la merma', function () {
+        $caja = app(CajaService::class)->abrir(['fecha' => today(), 'saldo_inicial' => '0']);
+
+        app(VentaService::class)->anular(
+            $this->venta,
+            'Producto dañado, se devuelve el dinero y se desecha',
+            'producto_defectuoso',
+            descartar: true,
+        );
+
+        $devolucion = MovimientoInventario::where('tipo', MovimientoInventario::TIPO_DEVOLUCION)->sole();
+        $merma = MovimientoInventario::where('tipo', MovimientoInventario::TIPO_MERMA)->sole();
+
+        // 10 en stock - 3 vendidas + 3 devueltas - 3 desechadas = 7 vendibles.
+        expect($this->producto->fresh()->stock_actual)->toBe(7)
+            ->and((string) $caja->fresh()->total_ventas)->toBe('0.00')
+            ->and($devolucion->cantidad)->toBe(3)
+            ->and($merma->cantidad)->toBe(3)
+            ->and($merma->stock_anterior)->toBe(10)
+            ->and($merma->stock_nuevo)->toBe(7)
+            ->and($merma->referencia_id)->toBe($this->venta->id);
+    });
 });
 
 describe('RF01 eliminar productos (borrado lógico)', function () {
@@ -417,7 +459,8 @@ describe('RF07/RF08/RF09/RF11 reportes e indicadores OE4', function () {
         $this->actingAs(tap(User::factory()->create())->assignRole('Consultor'));
         Livewire::test(Reportes::class)
             ->assertOk()
-            ->assertSee('Ventas diarias por producto')
+            ->assertSee('Productos más vendidos')
+            ->assertSee('Otros reportes')
             ->assertSee('Indicadores de gestión')
             ->assertSee('Limonada');
 
@@ -697,5 +740,35 @@ describe('Cierre con conteo físico (planilla de inventario final)', function ()
         expect($producto->fresh()->stock_actual)->toBe(4);
 
         $this->actingAs(tap(User::factory()->create())->assignRole('Operario'))->get('/admin/conteo-fisico')->assertForbidden();
+    });
+
+    it('el buscador del conteo filtra por nombre o código y conserva lo digitado', function () {
+        $this->seed(RoleSeeder::class);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        $this->actingAs(tap(User::factory()->create())->assignRole('Admin'));
+
+        $coco = Producto::factory()->create(['nombre' => 'Agua de Coco', 'stock_actual' => 5]);
+        $helado = Producto::factory()->create(['nombre' => 'Helado de Fresa', 'stock_actual' => 3]);
+
+        Livewire::test(ConteoFisico::class)
+            ->assertSee('Agua de Coco')
+            ->assertSee('Helado de Fresa')
+            // El código se muestra en la tabla para ubicar el producto físico.
+            ->assertSee($coco->codigo)
+            ->assertSee('Código')
+            ->set("conteos.{$coco->id}", '7')
+            // Busca por nombre (sin importar mayúsculas) y no pierde lo digitado.
+            ->set('busqueda', 'helado')
+            ->assertSee('Helado de Fresa')
+            ->assertDontSee('Agua de Coco')
+            ->assertSet("conteos.{$coco->id}", '7')
+            // Busca por código de producto.
+            ->set('busqueda', (string) $coco->codigo)
+            ->assertSee('Agua de Coco')
+            ->assertDontSee('Helado de Fresa')
+            // Sin coincidencias avisa y el conteo digitado sigue en memoria.
+            ->set('busqueda', 'zzz-no-existe')
+            ->assertSee('Ningún producto coincide')
+            ->assertSet("conteos.{$coco->id}", '7');
     });
 });

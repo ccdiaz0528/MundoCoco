@@ -131,15 +131,27 @@ class VentaService
      * Anula una venta (devolución total): devuelve el stock de cada línea como
      * movimiento "devolucion" (RF12), la excluye de caja y reportes y la
      * audita. La venta no se borra. Solo con la caja de su fecha abierta.
+     *
+     * La causa es opcional en el servicio (compatibilidad con llamadas
+     * existentes) pero debe ser una clave de config('mundococo.motivos_anulacion').
+     *
+     * $descartar: la devolución no vuelve a la venta (producto dañado, vencido o
+     * consumo). Se repone el stock y se da de baja como merma en la misma
+     * transacción, de modo que el stock no se infle y la pérdida quede en los
+     * indicadores (RF12/OE4). El dinero igual se devuelve: la venta sale de caja.
      */
-    public function anular(Venta $venta, string $motivo): Venta
+    public function anular(Venta $venta, string $motivo, ?string $categoria = null, bool $descartar = false): Venta
     {
         $motivo = trim($motivo);
         if ($motivo === '') {
             throw ValidationException::withMessages(['motivo_anulacion' => 'Indique el motivo de la anulación.']);
         }
 
-        return DB::transaction(function () use ($venta, $motivo): Venta {
+        if ($categoria !== null && ! array_key_exists($categoria, config('mundococo.motivos_anulacion'))) {
+            throw ValidationException::withMessages(['categoria_anulacion' => 'La causa de la anulación no es válida.']);
+        }
+
+        return DB::transaction(function () use ($venta, $motivo, $categoria, $descartar): Venta {
             $venta = Venta::query()->with('detalles')->lockForUpdate()->findOrFail($venta->id);
             $this->asegurarNoAnulada($venta);
             $this->asegurarCajaNoCerrada(Carbon::parse($venta->fecha_venta));
@@ -156,14 +168,35 @@ class VentaService
                 'anulada_at' => now(),
                 'anulada_por' => Auth::id(),
                 'motivo_anulacion' => $motivo,
+                'categoria_anulacion' => $categoria,
             ])->saveQuietly();
 
             foreach ($cantidades as $productoId => $cantidad) {
-                $this->moverStock($productos->get($productoId), $cantidad, $venta, 'Anulación venta #'.$venta->id.': '.$motivo);
+                $producto = $productos->get($productoId);
+                $this->moverStock($producto, $cantidad, $venta, 'Anulación venta #'.$venta->id.': '.$motivo);
+
+                // La mercancía no vuelve a la venta: se da de baja como merma para
+                // que el stock quede igual que antes de la venta y la pérdida se
+                // vea en los indicadores, en vez de reaparecer como stock vendible.
+                if ($descartar) {
+                    $this->moverStock(
+                        $producto,
+                        -$cantidad,
+                        $venta,
+                        'Merma por anulación venta #'.$venta->id.': '.$motivo,
+                        null,
+                        MovimientoInventario::TIPO_MERMA,
+                    );
+                }
             }
 
             app(CajaService::class)->recalcularCajaAbierta($venta->fecha_venta);
-            AuditService::log('venta_anulada', $venta, ['motivo' => $motivo, 'total' => (string) $venta->total]);
+            AuditService::log('venta_anulada', $venta, [
+                'motivo' => $motivo,
+                'categoria' => $categoria,
+                'descartado' => $descartar,
+                'total' => (string) $venta->total,
+            ]);
 
             return $venta->load(['detalles.producto', 'metodoPago']);
         }, 3);
@@ -336,8 +369,11 @@ class VentaService
      * Aplica un cambio de stock ya validado (negativo = salida por venta,
      * positivo = devolución por edición) y lo traza en MovimientoInventario.
      * Query builder sin eventos: el ProductoObserver solo traza ajustes manuales.
+     *
+     * $tipo permite forzar el tipo del movimiento (p. ej. merma cuando la
+     * devolución no vuelve a la venta); por defecto se deduce del signo.
      */
-    private function moverStock(Producto $producto, int $delta, Venta $venta, string $motivo, ?Carbon $fecha = null): void
+    private function moverStock(Producto $producto, int $delta, Venta $venta, string $motivo, ?Carbon $fecha = null, ?string $tipo = null): void
     {
         $stockAnterior = $producto->stock_actual;
         // withTrashed: el producto pudo eliminarse (baja lógica) después de la
@@ -348,7 +384,7 @@ class VentaService
         MovimientoInventario::create([
             'producto_id' => $producto->id,
             'user_id' => Auth::id(),
-            'tipo' => $delta < 0 ? MovimientoInventario::TIPO_VENTA : MovimientoInventario::TIPO_DEVOLUCION,
+            'tipo' => $tipo ?? ($delta < 0 ? MovimientoInventario::TIPO_VENTA : MovimientoInventario::TIPO_DEVOLUCION),
             'fecha_movimiento' => $fecha ?? now(),
             'cantidad' => abs($delta),
             'stock_anterior' => $stockAnterior,
