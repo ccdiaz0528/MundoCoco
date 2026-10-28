@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Gastos\Pages;
 use App\Filament\Resources\Gastos\GastoResource;
 use App\Models\Caja;
 use App\Services\CajaService;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Validation\ValidationException;
 
@@ -17,6 +18,12 @@ class CreateGasto extends CreateRecord
         $data['user_id'] = auth()->id();
         // Bloquear si la caja de la fecha ya está cerrada
         if (Caja::whereDate('fecha', $data['fecha'])->where('estado', 'cerrada')->exists()) {
+            Notification::make()
+                ->danger()
+                ->title('No se puede registrar el gasto')
+                ->body('La caja de la fecha seleccionada está cerrada. Elige una fecha con caja abierta.')
+                ->send();
+
             throw ValidationException::withMessages(['fecha' => 'No se pueden registrar gastos en una caja cerrada.']);
         }
 

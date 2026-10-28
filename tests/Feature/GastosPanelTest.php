@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Resources\Gastos\Pages\CreateGasto;
 use App\Filament\Resources\Gastos\Pages\EditGasto;
 use App\Models\Caja;
 use App\Models\Gasto;
@@ -80,4 +81,20 @@ it('no permite abrir la edición de un gasto de caja cerrada', function () {
     $gasto = Gasto::factory()->create(['fecha' => '2026-10-20']);
 
     Livewire::test(EditGasto::class, ['record' => $gasto->getRouteKey()])->assertForbidden();
+});
+
+it('avisa por qué no puede registrar un gasto en una caja cerrada', function () {
+    Caja::factory()->cerrada()->create(['fecha' => '2026-10-20']);
+
+    Livewire::test(CreateGasto::class)
+        ->fillForm([
+            'fecha' => '2026-10-20',
+            'descripcion' => 'Pago de servicios',
+            'categoria' => 'servicios',
+            'monto' => 10000,
+        ])
+        ->call('create')
+        ->assertNotified('No se puede registrar el gasto');
+
+    expect(Gasto::count())->toBe(0);
 });
