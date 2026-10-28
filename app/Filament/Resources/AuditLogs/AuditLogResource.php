@@ -31,7 +31,8 @@ class AuditLogResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with('user');
+        // El registro afectado se muestra por su nombre (producto, venta, caja).
+        return parent::getEloquentQuery()->with(['user', 'modelo']);
     }
 
     public static function table(Table $table): Table
