@@ -15,7 +15,7 @@
 </head>
 <body>
     <h1>MundoCoco - {{ $titulo }}</h1>
-    <p class="meta">Periodo: {{ $desde }} al {{ $hasta }} | Generado: {{ $generado }}</p>
+    <p class="meta">@if($inventarioActual) Estado actual @else Periodo: {{ $desde }} al {{ $hasta }} @endif | Generado: {{ $generado }}</p>
     <table>
         <thead>
             <tr>
@@ -32,7 +32,7 @@
                     @endforeach
                 </tr>
             @empty
-                <tr><td colspan="{{ count($encabezados) }}">Sin datos en el periodo seleccionado.</td></tr>
+                <tr><td colspan="{{ count($encabezados) }}">{{ $inventarioActual ? 'Sin datos disponibles.' : 'Sin datos en el periodo seleccionado.' }}</td></tr>
             @endforelse
         </tbody>
     </table>

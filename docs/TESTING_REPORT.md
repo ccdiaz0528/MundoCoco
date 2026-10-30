@@ -1,6 +1,6 @@
 # Estrategia de pruebas - MundoCoco
 
-La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **204 pruebas (795 aserciones)** en 56,85 s, PHP 8.4.26, el 27/10/2026. Pint y `npm run build` también pasaron. La cobertura no se repitió; la medición del 22/10/2026 se conserva como histórica. No declarar cantidad vigente sin ejecutar `php artisan test`.
+La suite usa **Pest 4.5**, **SQLite :memory:** y `RefreshDatabase` (`tests/Pest.php`, `phpunit.xml`). Última ejecución: **207 pruebas (817 aserciones)** en 52,09 s, PHP 8.4.26, el 29/10/2026. Pint y `npm run build` también pasaron. La cobertura de **91,3 %** se midió en la línea base anterior de 205 pruebas; no se volvió a medir tras agregar las pruebas recientes. La medición del 22/10/2026 (92,5 %) se conserva como histórica. No declarar cantidad vigente sin ejecutar `php artisan test`.
 
 ## Medición histórica del 2026-10-22
 
@@ -84,7 +84,7 @@ Nota (2026-10-05): las ejecuciones de GitHub Actions del 2026-09-09, 09-24 y 09-
 
 `tests/Feature/CumplimientoAnteproyectoTest.php` agrupa una prueba por brecha cerrada (Nequi, precio y fecha de venta, roles RF10, anulación, borrado lógico, RF02/RF03/RF05, reportes e indicadores OE4, Ley 1581, RNF07 sucursal y API, humo de todas las pantallas del panel). La matriz requisito → código → prueba está en `docs/CUMPLIMIENTO_ANTEPROYECTO.md`.
 
-RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xml`, solo código crítico, mínimo 80 %) con pcov. Medición local (2026-10-22, pcov 1.0.12): **92,5 %** en PHP 8.4.26, la versión declarada, y 92,7 % en PHP 8.5.10, sobre el código crítico.
+RNF10: la cobertura se mide con `composer test:cobertura` (`phpunit.cobertura.xml`, solo código crítico, mínimo 80 %) con pcov. Medición vigente (2026-10-29): **91,3 %**. Medición histórica (2026-10-22): 92,5 % en PHP 8.4.26 y 92,7 % en PHP 8.5.10.
 
 ## Nuevos Tests Añadidos 2026-09-09
 
@@ -123,7 +123,7 @@ Histórico: hasta el 2026-09-09 el CI usaba `coverage: none` y la cobertura nunc
 
 - RNF01 <3s: simulación jornada 0.09s (incluye 15 ventas + cierre)
 - RNF04 backup diario 02:00 + audit 365d retención (`routes/console.php:10`)
-- RNF10 80% cobertura: 92,5 % medido localmente con pcov en PHP 8.4.26 (`phpunit.cobertura.xml`, 2026-10-22); el CI no ha podido ejecutarse (facturación de GitHub)
+- RNF10 80% cobertura: 91,3 % medido localmente con pcov en PHP 8.4.26 (`phpunit.cobertura.xml`, 2026-10-29); el CI no ha podido ejecutarse (facturación de GitHub)
 
 ## Verificación de RNF contra un servidor real (2026-10-05)
 

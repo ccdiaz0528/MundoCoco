@@ -59,7 +59,7 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-El flujo de GitHub Actions (`.github/workflows/quality.yml`) define estos mismos pasos, pero aún no ha podido ejecutarse por un bloqueo de facturación de la cuenta; hoy la verificación se hace localmente (última: 2026-10-22, PHP 8.4.26, 181 pruebas, 661 aserciones, cobertura 92,5 %).
+El flujo de GitHub Actions (`.github/workflows/quality.yml`) define estos mismos pasos, pero aún no ha podido ejecutarse por un bloqueo de facturación de la cuenta; hoy la verificación se hace localmente (última suite: 2026-10-29, PHP 8.4.26, 207 pruebas y 817 aserciones; cobertura medida: 91,3 %).
 
 ## Estructura relevante
 

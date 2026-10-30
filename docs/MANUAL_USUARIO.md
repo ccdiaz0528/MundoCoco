@@ -223,6 +223,7 @@ Elige el periodo (**Desde / Hasta**) y pulsa **Aplicar periodo**. Cada sección 
 | Sección | Contenido |
 |---|---|
 | Valorización de inventario | Valor del inventario a costo y a precio de venta, ganancia potencial |
+| Inventario actual por categoría | Productos, stock, productos bajo mínimo y valorización por categoría, con totales |
 | Indicadores de gestión | Precisión del inventario, pérdidas por mermas y ajustes, productos agotados, cajas con diferencia, ventas anuladas |
 | Productos con stock bajo | Con sugerencia de reorden |
 | Comparativo | Periodo elegido frente al anterior de igual duración |
@@ -231,7 +232,7 @@ Elige el periodo (**Desde / Hasta**) y pulsa **Aplicar periodo**. Cada sección 
 | Flujo de efectivo | Del día *Hasta*: base, ventas por método, gastos, retiros o consignaciones, anuladas, saldo y, si la caja se cerró, lo contado y la diferencia |
 | Movimientos de inventario | Historial del periodo (máximo 200 en pantalla; la descarga los incluye todos) |
 
-Al final, el bloque **Otros reportes** descarga en PDF, Excel o CSV los informes de detalle que no se dibujan en pantalla: inventario actual por categoría, ventas por categoría y ventas diarias por producto.
+Al final, el bloque **Otros reportes** descarga en PDF, Excel o CSV los informes de detalle que no se dibujan en pantalla: ventas por categoría y ventas diarias por producto.
 
 Los reportes agregados de ventas excluyen las anuladas. El CSV de ventas seleccionadas sí las incluye cuando se marcan, identificadas por su estado.
 

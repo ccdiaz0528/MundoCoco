@@ -155,6 +155,7 @@ class ReporteExportService
         $dompdf = new Dompdf($opciones);
         $dompdf->loadHtml(view('reportes.exportar-pdf', [
             'titulo' => self::TIPOS[$tipo],
+            'inventarioActual' => in_array($tipo, ['inventario', 'stock_bajo', 'valorizacion'], true),
             'desde' => $desde,
             'hasta' => $hasta,
             'generado' => Carbon::now()->format('d/m/Y H:i'),

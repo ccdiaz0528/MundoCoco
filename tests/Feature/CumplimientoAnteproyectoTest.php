@@ -9,6 +9,7 @@ use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Widgets\StockCritico;
 use App\Models\AuditLog;
 use App\Models\Caja;
+use App\Models\Categoria;
 use App\Models\Gasto;
 use App\Models\MetodoPago;
 use App\Models\MovimientoInventario;
@@ -459,6 +460,7 @@ describe('RF07/RF08/RF09/RF11 reportes e indicadores OE4', function () {
         $this->actingAs(tap(User::factory()->create())->assignRole('Consultor'));
         Livewire::test(Reportes::class)
             ->assertOk()
+            ->assertSee('Inventario actual por categoría')
             ->assertSee('Productos más vendidos')
             ->assertSee('Otros reportes')
             ->assertSee('Indicadores de gestión')
@@ -469,6 +471,28 @@ describe('RF07/RF08/RF09/RF11 reportes e indicadores OE4', function () {
             ->assertOk()
             ->assertSee('Limonada')
             ->assertSee('Reponer 6 uds');
+    });
+
+    it('RF08: el inventario por categoría se muestra en pantalla con su valorización', function () {
+        $this->seed(RoleSeeder::class);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        $categoria = Categoria::factory()->create(['nombre' => 'Aceites']);
+        Producto::factory()->create([
+            'categoria_id' => $categoria->id,
+            'stock_actual' => 10,
+            'stock_minimo' => 5,
+            'precio_costo' => '1000.25',
+            'precio_venta' => '2000.50',
+        ]);
+
+        $this->actingAs(tap(User::factory()->create())->assignRole('Consultor'));
+        Livewire::test(Reportes::class)
+            ->assertOk()
+            ->assertSee('Inventario actual por categoría')
+            ->assertSee('Aceites')
+            ->assertSee('$ 10.002,50')
+            ->assertSee('$ 20.005,00');
     });
 });
 

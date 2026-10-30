@@ -40,6 +40,8 @@ Filament (pantallas)  ──►  Servicios (reglas de negocio)  ──►  Model
 
 ## 3. Instalación
 
+Se prevé instalar el sistema de manera local en el equipo de la tienda MundoCoco. La capacitación y el piloto se realizaron mediante el despliegue de demostración en la nube. La instalación local aún no se ha realizado y no se informa una fecha de puesta en funcionamiento.
+
 ```powershell
 composer install
 Copy-Item .env.example .env
@@ -149,7 +151,7 @@ npm run build              # assets
 composer test:cobertura    # RNF10: ≥ 80 % en código crítico (requiere pcov o xdebug)
 ```
 
-CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación es local. El 27/10/2026 pasaron 204 pruebas y 795 aserciones en PHP 8.4.26, además de Pint y la compilación. La cobertura de 92,5 % corresponde al 22/10/2026 y no se volvió a medir sobre estos cambios.
+CI (`.github/workflows/quality.yml`) define los cuatro pasos para cada push y pull request; sus ejecuciones aún no han podido iniciarse por un bloqueo de facturación de la cuenta de GitHub, así que la verificación es local. El 29/10/2026 pasaron 207 pruebas y 817 aserciones en PHP 8.4.26, además de Pint y la compilación; la cobertura medida en la línea base anterior fue 91,3 %. La cobertura de 92,5 % corresponde al 22/10/2026 y se conserva como histórica.
 
 ## 9. Diagnóstico
 

@@ -4,45 +4,45 @@
     @php($flujo = $datos['flujo'])
     @php($ind = $datos['indicadores'])
     @php($rango = ['desde' => $datos['desde'], 'hasta' => $datos['hasta']])
-    @php($pesos = fn ($valor) => '$ '.number_format((float) $valor, 0, ',', '.'))
+    @php($pesos = fn ($valor) => '$ '.number_format((float) $valor, 2, ',', '.'))
 
     <style>
         .rpt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
         .rpt-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
         .rpt-scroll { overflow-x: auto; }
         .rpt-scroll.alto { max-height: 320px; overflow-y: auto; }
-        .rpt-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .rpt-tabla th { padding: 8px 10px; border-bottom: 2px solid #e5e7eb; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .65; text-align: left; }
+        .rpt-tabla { width: 100%; border-collapse: collapse; font-size: 16px; }
+        .rpt-tabla th { padding: 8px 10px; border-bottom: 2px solid #e5e7eb; font-size: 16px; text-transform: uppercase; letter-spacing: .04em; opacity: .65; text-align: left; }
         .rpt-tabla td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; }
         .rpt-tabla .num { text-align: right; }
         .rpt-tabla .fuerte { font-weight: 700; }
         .rpt-kpi { margin: 0; font-size: 22px; font-weight: 800; }
-        .rpt-vacio { margin: 0; font-size: 13px; opacity: .65; }
-        .rpt-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: transparent; color: inherit; }
-        .rpt-label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; opacity: .7; }
+        .rpt-vacio { margin: 0; font-size: 16px; opacity: .65; }
+        .rpt-input { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background: transparent; color: inherit; }
+        .rpt-label { display: block; font-size: 16px; font-weight: 600; margin-bottom: 4px; opacity: .7; }
     </style>
 
-    <p style="margin:0 0 16px;font-size:13px;opacity:.75">
+    <p style="margin:0 0 16px;font-size:16px;opacity:.75">
         Inventario, ventas y caja del {{ $datos['desde'] }} al {{ $datos['hasta'] }}. Ajusta el periodo y pulsa «Aplicar periodo».
     </p>
 
     <x-filament::section heading="Periodo del reporte" description="Filtra ventas, movimientos e indicadores por fecha. El inventario muestra el estado actual; el flujo de caja es del día «Hasta».">
         <form wire:submit="filtrar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
             <div>
-                <label class="rpt-label">Desde</label>
-                <input type="date" wire:model="desde" class="rpt-input" />
+                <label for="reportes-desde" class="rpt-label">Desde</label>
+                <input id="reportes-desde" type="date" wire:model="desde" class="rpt-input" />
             </div>
             <div>
-                <label class="rpt-label">Hasta</label>
-                <input type="date" wire:model="hasta" class="rpt-input" />
+                <label for="reportes-hasta" class="rpt-label">Hasta</label>
+                <input id="reportes-hasta" type="date" wire:model="hasta" class="rpt-input" />
             </div>
-            <button type="submit" style="padding:8px 16px;border-radius:8px;background:#d97706;color:#fff;font-size:13px;font-weight:600;border:none;cursor:pointer">Aplicar periodo</button>
+            <button type="submit" style="padding:8px 16px;border-radius:8px;background:#92400e;color:#fff;font-size:16px;font-weight:600;border:none;cursor:pointer">Aplicar periodo</button>
         </form>
         @error('desde')
-            <p style="margin:8px 0 0;font-size:12px;color:#dc2626">{{ $message }}</p>
+            <p style="margin:8px 0 0;font-size:16px;color:#dc2626">{{ $message }}</p>
         @enderror
         @error('hasta')
-            <p style="margin:8px 0 0;font-size:12px;color:#dc2626">{{ $message }}</p>
+            <p style="margin:8px 0 0;font-size:16px;color:#dc2626">{{ $message }}</p>
         @enderror
     </x-filament::section>
 
@@ -57,19 +57,63 @@
             </div>
         </x-filament::section>
 
+        <x-filament::section heading="Inventario actual por categoría" description="Stock y valorización de los productos activos agrupados por categoría.">
+            @include('filament.pages.partials.descargas', ['tipo' => 'inventario'] + $rango)
+            @if($datos['inventarioPorCategoria']->isEmpty())
+                <p class="rpt-vacio">Sin categorías registradas.</p>
+            @else
+                <div class="rpt-scroll">
+                    <table class="rpt-tabla">
+                        <thead>
+                            <tr>
+                                <th>Categoría</th>
+                                <th class="num">Productos</th>
+                                <th class="num">Stock</th>
+                                <th class="num">Bajo mínimo</th>
+                                <th class="num">Valor costo</th>
+                                <th class="num">Valor venta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($datos['inventarioPorCategoria'] as $cat)
+                                <tr>
+                                    <td class="fuerte">{{ $cat['categoria'] }}</td>
+                                    <td class="num">{{ $cat['total_productos'] }}</td>
+                                    <td class="num">{{ $cat['stock_total'] }}</td>
+                                    <td class="num" @if($cat['productos_bajo'] > 0) style="color:#dc2626;font-weight:700" @endif>{{ $cat['productos_bajo'] }}</td>
+                                    <td class="num">{{ $pesos($cat['valorizacion_costo']) }}</td>
+                                    <td class="num">{{ $pesos($cat['valorizacion_venta']) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="fuerte">Total</td>
+                                <td class="num fuerte">{{ $datos['inventarioPorCategoria']->sum('total_productos') }}</td>
+                                <td class="num fuerte">{{ $datos['inventarioPorCategoria']->sum('stock_total') }}</td>
+                                <td class="num fuerte">{{ $datos['inventarioPorCategoria']->sum('productos_bajo') }}</td>
+                                <td class="num fuerte">{{ $pesos($datos['inventarioPorCategoria']->sum('valorizacion_costo')) }}</td>
+                                <td class="num fuerte">{{ $pesos($datos['inventarioPorCategoria']->sum('valorizacion_venta')) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            @endif
+        </x-filament::section>
+
         <x-filament::section heading="Indicadores de gestión" description="Precisión de inventario, pérdidas y exactitud del cuadre de caja en el periodo.">
             @include('filament.pages.partials.descargas', ['tipo' => 'indicadores'] + $rango)
             <div class="rpt-kpis" style="margin-top:0">
                 <div><span class="rpt-label">Precisión de inventario</span><p class="rpt-kpi">{{ number_format($ind['precision_inventario']['porcentaje'], 1, ',', '.') }} %</p>
-                    <span style="font-size:12px;opacity:.7">{{ $ind['precision_inventario']['inconsistentes'] }} de {{ $ind['precision_inventario']['productos'] }} con diferencia</span></div>
+                    <span style="font-size:16px;opacity:.7">{{ $ind['precision_inventario']['inconsistentes'] }} de {{ $ind['precision_inventario']['productos'] }} con diferencia</span></div>
                 <div><span class="rpt-label">Pérdidas (mermas y ajustes)</span><p class="rpt-kpi">{{ $pesos($ind['perdidas']['valor_costo']) }}</p>
-                    <span style="font-size:12px;opacity:.7">{{ $ind['perdidas']['unidades'] }} unidades a costo</span></div>
+                    <span style="font-size:16px;opacity:.7">{{ $ind['perdidas']['unidades'] }} unidades a costo</span></div>
                 <div><span class="rpt-label">Productos agotados</span><p class="rpt-kpi">{{ $ind['agotados'] }}</p>
-                    <span style="font-size:12px;opacity:.7">Riesgo de ventas perdidas</span></div>
+                    <span style="font-size:16px;opacity:.7">Riesgo de ventas perdidas</span></div>
                 <div><span class="rpt-label">Cajas con diferencia</span><p class="rpt-kpi">{{ $ind['cuadre_caja']['con_diferencia'] }} / {{ $ind['cuadre_caja']['cerradas'] }}</p>
-                    <span style="font-size:12px;opacity:.7">Faltante {{ $pesos($ind['cuadre_caja']['faltante_total']) }} · Sobrante {{ $pesos($ind['cuadre_caja']['sobrante_total']) }}</span></div>
+                    <span style="font-size:16px;opacity:.7">Faltante {{ $pesos($ind['cuadre_caja']['faltante_total']) }} · Sobrante {{ $pesos($ind['cuadre_caja']['sobrante_total']) }}</span></div>
                 <div><span class="rpt-label">Ventas anuladas</span><p class="rpt-kpi">{{ $ind['anulaciones']['cantidad'] }}</p>
-                    <span style="font-size:12px;opacity:.7">{{ $pesos($ind['anulaciones']['total']) }}</span></div>
+                    <span style="font-size:16px;opacity:.7">{{ $pesos($ind['anulaciones']['total']) }}</span></div>
             </div>
         </x-filament::section>
     </div>
@@ -218,7 +262,6 @@
                         </thead>
                         <tbody>
                             @foreach([
-                                'inventario' => 'Inventario actual por categoría',
                                 'ventas_categoria' => 'Ventas por categoría',
                                 'ventas_producto' => 'Ventas diarias por producto',
                             ] as $tipo => $titulo)
